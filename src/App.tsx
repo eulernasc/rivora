@@ -68,13 +68,13 @@ function App(){
   })
   return <div className="app-shell">
     <aside className="sidebar">
-      <div className="brand"><img src={`${import.meta.env.BASE_URL}rivora-mark.svg`} className="brand-mark" alt=""/><div><strong>RIVORA</strong><span>Operation Automation System</span></div></div>
+      <div className="brand"><div className="brand-icon-wrap"><img src={`${import.meta.env.BASE_URL}rivora-mark.svg`} className="brand-mark" alt=""/><i className="brand-scan"/></div><div><strong>RIVORA</strong><span>Operation Automation System</span></div></div>
       <nav className="nav"><small>NAVEGAÇÃO</small>{NAV_ITEMS.map(([label,Icon])=><button key={label} className={page===label?'nav-item active':'nav-item'} onClick={()=>setPage(label)}><Icon size={18} strokeWidth={1.7}/><span>{label}</span>{label==='Tarefas'&&<b>{tasks.filter(t=>!t.done).length}</b>}</button>)}</nav>
       <div className="side-foot"><div className="mode-card"><i/><div><strong>Modo local</strong><span>Pronto para integrações</span></div></div><button className="nav-item"><Settings size={18}/><span>Configurações</span></button></div>
     </aside>
     <main className="main">
       <header className="topbar">
-        <div className="page-title"><span>RIVORA / {page.toUpperCase()}</span><h1>{page}</h1></div>
+        <div className="page-title"><span>RIVORA / {page.toUpperCase()}</span><div><h1>{page}</h1><i className="runtime-dot"/></div></div>
         <div className="top-actions">
           <label className="search-box"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar no Rivora"/><kbd>CTRL K</kbd></label>
           <button className="install-button" onClick={installApp}><Download size={15}/>Instalar</button>
