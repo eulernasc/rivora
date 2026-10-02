@@ -31,9 +31,24 @@ const AUTOMATIONS = [
   {name:'Sincronização de tarefas',state:'Preparação',meta:'Todoist • integração pendente'},
 ]
 
+const SEARCH_ITEMS:Array<{label:string;detail:string;page:Page}> = [
+  {label:'Visão geral',detail:'Centro de comando e estado operacional',page:'Visão geral'},
+  {label:'Fechamentos',detail:'Juatuba, Jundiaí, períodos e retornos',page:'Fechamentos'},
+  {label:'Tarefas',detail:'Pendências e próximas ações',page:'Tarefas'},
+  {label:'Automações',detail:'Fluxos, testes e monitoramento',page:'Automações'},
+  {label:'Importações',detail:'Prazos, fontes e validações',page:'Importações'},
+  {label:'Retornos',detail:'Conversas e anexos corrigidos',page:'Retornos'},
+  {label:'Análises',detail:'Indicadores, divergências e CPH',page:'Análises'},
+  {label:'Histórico',detail:'Registro de ações e mudanças',page:'Histórico'},
+  {label:'Juatuba',detail:'Fechamento aguardando retorno corrigido',page:'Fechamentos'},
+  {label:'Jundiaí',detail:'Fechamento aguardando retorno corrigido',page:'Fechamentos'},
+]
+
 function App(){
   const [page,setPage]=useState<Page>('Visão geral')
   const [query,setQuery]=useState('')
+  const [searchOpen,setSearchOpen]=useState(false)
+  const [notificationsOpen,setNotificationsOpen]=useState(false)
   const [installEvent,setInstallEvent]=useState<any>(null)
   const [installMessage,setInstallMessage]=useState('')
   const [tasks,setTasks]=useState<Task[]>(()=>{
@@ -45,7 +60,24 @@ function App(){
     window.addEventListener('beforeinstallprompt',handler)
     return()=>window.removeEventListener('beforeinstallprompt',handler)
   },[])
+  useEffect(()=>{
+    const handler=(event:KeyboardEvent)=>{
+      if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){
+        event.preventDefault()
+        setSearchOpen(true)
+        window.setTimeout(()=>document.getElementById('rivora-global-search')?.focus(),0)
+      }
+      if(event.key==='Escape'){ setSearchOpen(false); setNotificationsOpen(false) }
+    }
+    window.addEventListener('keydown',handler)
+    return()=>window.removeEventListener('keydown',handler)
+  },[])
   const today=useMemo(()=>new Intl.DateTimeFormat('pt-BR',{weekday:'long',day:'2-digit',month:'long'}).format(new Date()),[])
+  const searchResults=useMemo(()=>{
+    const term=query.trim().toLocaleLowerCase('pt-BR')
+    return term?SEARCH_ITEMS.filter(item=>(item.label+' '+item.detail).toLocaleLowerCase('pt-BR').includes(term)):SEARCH_ITEMS.slice(0,6)
+  },[query])
+  const navigateFromSearch=(target:Page)=>{ setPage(target); setSearchOpen(false); setQuery('') }
   const installApp=async()=>{
     if(window.matchMedia('(display-mode: standalone)').matches){
       setInstallMessage('RIVORA já está instalado neste dispositivo.')
@@ -76,12 +108,30 @@ function App(){
       <header className="topbar">
         <div className="page-title"><span>RIVORA / {page.toUpperCase()}</span><div><h1>{page}</h1><i className="runtime-dot"/></div></div>
         <div className="top-actions">
-          <label className="search-box"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar no Rivora"/><kbd>CTRL K</kbd></label>
+          <label className="search-box"><Search size={16}/><input id="rivora-global-search" value={query} onFocus={()=>setSearchOpen(true)} onChange={e=>{setQuery(e.target.value);setSearchOpen(true)}} onKeyDown={e=>{if(e.key==='Enter'&&searchResults[0])navigateFromSearch(searchResults[0].page)}} placeholder="Buscar no Rivora"/><kbd>CTRL K</kbd></label>
           <button className="install-button" onClick={installApp}><Download size={15}/>Instalar</button>
-          <button className="icon-button" aria-label="Notificações"><Bell size={18}/></button>
+          <button className={notificationsOpen?'icon-button active':'icon-button'} aria-label="Notificações" onClick={()=>{setNotificationsOpen(v=>!v);setSearchOpen(false)}}><Bell size={18}/><i className="notification-dot"/></button>
           <div className="user-chip"><span>EN</span><div><strong>Euler Nascimento</strong><small>Administrador</small></div></div>
         </div>
       </header>
+      {searchOpen&&<div className="search-popover">
+        <div className="popover-head"><span>BUSCA GLOBAL</span><kbd>ESC</kbd></div>
+        <div className="search-results">
+          {searchResults.length?searchResults.map((item,index)=><button key={item.label+item.detail} onClick={()=>navigateFromSearch(item.page)}>
+            <span className="search-index">{String(index+1).padStart(2,'0')}</span>
+            <div><b>{item.label}</b><small>{item.detail}</small></div>
+            <ChevronRight size={15}/>
+          </button>):<div className="no-results">Nenhum resultado encontrado.</div>}
+        </div>
+      </div>}
+      {notificationsOpen&&<div className="notification-popover">
+        <div className="popover-head"><span>NOTIFICAÇÕES</span><button onClick={()=>setNotificationsOpen(false)}><XCircle size={15}/></button></div>
+        <div className="notification-list">
+          <article><i className="amber"/><div><b>Juatuba aguarda retorno corrigido</b><small>Próxima ação prevista para 05/10.</small></div></article>
+          <article><i className="amber"/><div><b>Jundiaí aguarda retorno corrigido</b><small>Conversa vinculada permanece em acompanhamento.</small></div></article>
+          <article><i className="green"/><div><b>Fluxos de fechamento operacionais</b><small>Nenhum reenvio ou falha crítica detectada.</small></div></article>
+        </div>
+      </div>}
       {installMessage&&<div className="install-note"><span>{installMessage}</span><button onClick={()=>setInstallMessage('')} aria-label="Fechar"><XCircle size={16}/></button></div>}
       <section className="workspace">
         {page==='Visão geral'&&<Overview today={today} tasks={tasks} setPage={setPage}/>}
