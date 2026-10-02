@@ -947,3 +947,220 @@ html,body,#root{
     display:none;
   }
 }
+
+/* RIVORA navigation rail — standalone clean implementation */
+.rivora-rail{
+  position:sticky;
+  top:0;
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  padding:18px 14px 14px;
+  background:#0b1928;
+  color:#dce8f2;
+}
+
+.rail-brand{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:4px 8px 20px;
+  margin-bottom:18px;
+}
+
+.rail-logo{
+  width:40px;
+  height:40px;
+  flex:0 0 40px;
+  display:block;
+}
+
+.rail-brand-copy strong{
+  display:block;
+  font-size:14px;
+  line-height:1;
+  letter-spacing:.2em;
+  font-weight:700;
+}
+
+.rail-brand-copy span{
+  display:block;
+  max-width:142px;
+  margin-top:6px;
+  color:#7891a7;
+  font-size:8px;
+  line-height:1.45;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+
+.rail-nav{
+  display:grid;
+  gap:5px;
+}
+
+.rail-nav>small{
+  padding:0 10px 8px;
+  color:#607b94;
+  font-size:8px;
+  letter-spacing:.18em;
+}
+
+.rail-link{
+  min-height:44px;
+  width:100%;
+  display:flex;
+  align-items:center;
+  gap:11px;
+  padding:0 12px;
+  border:0;
+  border-radius:9px;
+  background:transparent;
+  color:#91a6b9;
+  cursor:pointer;
+  text-align:left;
+  transition:background .16s ease,color .16s ease,transform .16s ease;
+}
+
+.rail-link svg{
+  color:#7d98ad;
+  flex:0 0 auto;
+}
+
+.rail-link span{
+  font-size:12px;
+  font-weight:500;
+}
+
+.rail-link b{
+  margin-left:auto;
+  min-width:22px;
+  padding:2px 6px;
+  border-radius:999px;
+  background:#13314a;
+  color:#89dcff;
+  font-size:9px;
+  text-align:center;
+}
+
+.rail-link:hover{
+  color:#eef7ff;
+  background:rgba(255,255,255,.03);
+}
+
+.rail-link.active{
+  color:#ffffff;
+  background:linear-gradient(90deg,rgba(38,176,236,.18),rgba(38,176,236,.055));
+  box-shadow:inset 3px 0 0 #35c9f3;
+}
+
+.rail-link.active svg{
+  color:#49cdf5;
+}
+
+.rail-footer{
+  margin-top:auto;
+  display:grid;
+  gap:8px;
+  padding-top:14px;
+}
+
+.rail-status{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:8px 10px;
+  color:#8ea5b7;
+}
+
+.rail-status>i{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#35d8ee;
+  box-shadow:0 0 10px rgba(53,216,238,.45);
+}
+
+.rail-status strong,
+.rail-status span{
+  display:block;
+}
+
+.rail-status strong{
+  color:#d9e6ef;
+  font-size:9.5px;
+}
+
+.rail-status span{
+  margin-top:2px;
+  color:#6f879c;
+  font-size:8px;
+}
+
+.rail-settings{
+  color:#8198ab;
+}
+
+@media(max-width:1080px){
+  .rivora-rail{
+    padding:16px 8px 12px;
+  }
+  .rail-brand{
+    justify-content:center;
+    padding-inline:0;
+  }
+  .rail-brand-copy,
+  .rail-nav>small,
+  .rail-link span,
+  .rail-status div,
+  .rail-settings{
+    display:none;
+  }
+  .rail-link{
+    justify-content:center;
+    padding:0;
+  }
+  .rail-link b{
+    position:absolute;
+    margin:0 0 25px 28px;
+  }
+  .rail-status{
+    justify-content:center;
+    padding-inline:0;
+  }
+}
+
+@media(max-width:760px){
+  .rivora-rail{
+    position:fixed;
+    z-index:20;
+    left:0;
+    right:0;
+    bottom:0;
+    top:auto;
+    width:100%;
+    height:64px;
+    display:block;
+    padding:6px 8px;
+    background:#0b1928;
+    border-top:1px solid rgba(135,176,210,.14);
+  }
+  .rail-brand,
+  .rail-footer,
+  .rail-link:nth-child(n+6){
+    display:none;
+  }
+  .rail-nav{
+    grid-template-columns:repeat(5,1fr);
+    gap:4px;
+  }
+  .rail-link{
+    height:50px;
+    min-height:50px;
+    justify-content:center;
+    padding:0;
+  }
+  .rail-link.active{
+    box-shadow:inset 0 -2px 0 #35c9f3;
+  }
+}
