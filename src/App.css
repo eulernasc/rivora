@@ -184,3 +184,20 @@ body{background:
   .closure-status-line>div{border-right:0;border-bottom:1px solid var(--line)}
   .closure-status-line>div:last-child{border-bottom:0}
 }
+
+/* Tasks module */
+.task-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.task-toolbar>div{display:flex;gap:6px}
+.task-new{height:34px;padding:0 12px;border:1px solid rgba(28,212,243,.25);background:rgba(14,74,111,.12);color:#a9e5f2;font-size:9px;cursor:pointer}
+.task-composer{display:grid;grid-template-columns:1fr 180px auto;gap:8px;margin-bottom:10px;padding:11px;border:1px solid var(--line);background:rgba(8,18,30,.75)}
+.task-composer label{display:grid;gap:6px}
+.task-composer label span{color:#546f89;font-size:8px;letter-spacing:.14em}
+.task-composer input{height:35px;padding:0 10px;border:1px solid rgba(93,132,164,.18);outline:0;background:#07111d;color:#d8e8f7;font-size:10px}
+.task-composer input:focus{border-color:rgba(28,212,243,.3)}
+.task-composer>button{align-self:end;height:35px;padding:0 14px;background:linear-gradient(90deg,#0b78c6,#13b8d3);color:#effbff;font-size:9px;cursor:pointer}
+.task-empty{padding:24px 14px;border:1px dashed var(--line);color:#61758c;font-size:9px;text-align:center}
+@media(max-width:760px){
+  .task-toolbar{align-items:flex-start;flex-direction:column}
+  .task-composer{grid-template-columns:1fr}
+  .task-composer>button{width:100%}
+}
