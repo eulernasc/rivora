@@ -807,3 +807,59 @@ body{
   .nav-item{border-radius:8px}
   .nav-item.active{box-shadow:inset 0 0 0 1px rgba(63,177,234,.14)}
 }
+
+/* Sidebar integration — same visual plane as the application */
+.app-shell{
+  background:
+    radial-gradient(circle at 86% 4%,rgba(34,126,187,.09),transparent 29rem),
+    linear-gradient(180deg,#091725 0%,#0a1827 100%);
+}
+
+.sidebar{
+  background:transparent;
+  box-shadow:none;
+  border-right:1px solid rgba(135,176,210,.12);
+}
+
+.main{
+  background:transparent;
+}
+
+.brand{
+  border-bottom-color:rgba(135,176,210,.07);
+}
+
+.nav-item{
+  color:#91a7ba;
+}
+
+.nav-item:hover{
+  background:rgba(255,255,255,.022);
+  border-color:transparent;
+}
+
+.nav-item.active{
+  background:linear-gradient(90deg,rgba(30,154,219,.13),rgba(30,154,219,.035));
+  border-color:transparent;
+  box-shadow:inset 2px 0 0 #2cc5f3;
+}
+
+.side-foot{
+  border-top-color:rgba(135,176,210,.07);
+}
+
+.mode-card{
+  background:transparent;
+  border:0;
+}
+
+.side-foot .nav-item{
+  background:transparent;
+}
+
+@media(max-width:760px){
+  .sidebar{
+    background:rgba(9,23,37,.98);
+    box-shadow:none;
+  }
+}
