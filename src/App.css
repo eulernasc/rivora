@@ -275,3 +275,14 @@ body{background:
   .returns-status>small{grid-column:1/3;padding:10px 12px;border-top:1px solid var(--line)}
   .return-actions{flex-direction:column}
 }
+
+/* Window controls safety */
+@media (display-mode: window-controls-overlay){
+  .topbar{padding-right:190px}
+  .search-popover,.notification-popover{right:200px}
+}
+@media (max-width:900px) and (display-mode: window-controls-overlay){
+  .topbar{padding-right:155px}
+  .search-box{display:none}
+  .user-chip div{display:none}
+}
