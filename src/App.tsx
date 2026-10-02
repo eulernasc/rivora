@@ -155,88 +155,98 @@ function App(){
 function Overview({today,tasks,setPage}:{today:string;tasks:Task[];setPage:(p:Page)=>void}){
   const pending=tasks.filter(t=>!t.done).length
   return <>
-    <div className="home-head">
-      <div>
-        <p className="home-date"><CalendarDays size={14}/>{today}</p>
-        <h2>Operação em andamento</h2>
-        <span>Acompanhe o que está bloqueado, o que está correndo e o que precisa da sua decisão.</span>
+    <section className="dash-hero">
+      <div className="dash-hero-copy">
+        <p><CalendarDays size={15}/>{today}</p>
+        <h2>Olá, <em>Euler</em></h2>
+        <span>Aqui está o panorama da operação e o que precisa da sua atenção hoje.</span>
       </div>
-      <button className="command-action" onClick={()=>setPage('Tarefas')}><Command size={16}/><span>Abrir fila operacional</span><kbd>{pending}</kbd></button>
-    </div>
+      <button className="system-status-card" onClick={()=>setPage('Automações')}>
+        <i/>
+        <div><b>Sistema operacional</b><span>Todos os serviços em funcionamento</span></div>
+        <ChevronRight size={18}/>
+      </button>
+    </section>
 
-    <div className="ops-strip">
-      <div><span>PROCESSOS</span><b>7</b><small>ativos agora</small></div>
-      <div><span>PENDÊNCIAS</span><b>{pending}</b><small>próximo marco 05/10</small></div>
-      <div><span>AUTOMAÇÕES</span><b>2/3</b><small>uma em preparação</small></div>
-      <div className="system-ok"><span>ESTADO</span><b>Estável</b><small>sem falhas críticas</small></div>
-    </div>
+    <section className="dash-kpis">
+      <button className="dash-kpi kpi-blue" onClick={()=>setPage('Fechamentos')}>
+        <div className="kpi-icon"><FileSpreadsheet size={21}/></div>
+        <div><span>Processos ativos</span><b>7</b><small>2 aguardando retorno</small></div>
+        <ChevronRight size={17}/>
+      </button>
+      <button className="dash-kpi kpi-amber" onClick={()=>setPage('Tarefas')}>
+        <div className="kpi-icon"><Clock3 size={21}/></div>
+        <div><span>Pendências</span><b>{pending}</b><small>Próximo prazo 05/10</small></div>
+        <ChevronRight size={17}/>
+      </button>
+      <button className="dash-kpi kpi-green" onClick={()=>setPage('Automações')}>
+        <div className="kpi-icon"><Workflow size={21}/></div>
+        <div><span>Automações</span><b>3</b><small>2 operacionais • 1 em preparo</small></div>
+        <ChevronRight size={17}/>
+      </button>
+      <button className="dash-kpi kpi-violet" onClick={()=>setPage('Histórico')}>
+        <div className="kpi-icon"><CheckCircle2 size={21}/></div>
+        <div><span>Execuções seguras</span><b>100%</b><small>Nenhum reenvio detectado</small></div>
+        <ChevronRight size={17}/>
+      </button>
+    </section>
 
-    <div className="operations-layout">
-      <section className="operations-main">
-        <div className="section-heading">
-          <div><span>AGORA</span><h3>Fila operacional</h3></div>
-          <button onClick={()=>setPage('Tarefas')}>Abrir todas <ArrowUpRight size={14}/></button>
+    <section className="dash-main-grid">
+      <div className="dash-panel attention-panel">
+        <header>
+          <div className="panel-title-with-icon"><span className="panel-symbol amber-symbol"><ListTodo size={19}/></span><div><h3>Fila de atenção</h3><small>Itens que precisam da sua ação</small></div></div>
+          <button onClick={()=>setPage('Tarefas')}>Abrir todas <ChevronRight size={15}/></button>
+        </header>
+        <div className="attention-items">
+          <button onClick={()=>setPage('Fechamentos')}>
+            <i className="amber"/>
+            <span className="row-icon"><FileSpreadsheet size={18}/></span>
+            <div><b>Juatuba</b><small>Aguardando retorno corrigido</small></div>
+            <strong>Ticket 05/10</strong><ChevronRight size={16}/>
+          </button>
+          <button onClick={()=>setPage('Fechamentos')}>
+            <i className="amber"/>
+            <span className="row-icon"><FileSpreadsheet size={18}/></span>
+            <div><b>Jundiaí</b><small>Aguardando retorno corrigido</small></div>
+            <strong>Ticket 05/10</strong><ChevronRight size={16}/>
+          </button>
+          <button onClick={()=>setPage('Automações')}>
+            <i className="green"/>
+            <span className="row-icon"><Inbox size={18}/></span>
+            <div><b>Fechamentos enviados</b><small>Conversas vinculadas e preservadas</small></div>
+            <strong className="ok-badge">OK</strong><ChevronRight size={16}/>
+          </button>
         </div>
-        <div className="work-queue">
-          <article className="work-item priority">
-            <div className="work-index">01</div>
-            <div className="work-copy"><span>FECHAMENTO</span><b>Juatuba</b><p>Aguardando retorno corrigido de Mariana ou Leonardo.</p></div>
-            <div className="work-state"><strong>Aguardando</strong><small>Ticket em 05/10</small></div>
-            <button onClick={()=>setPage('Fechamentos')} aria-label="Abrir Juatuba"><ChevronRight size={18}/></button>
-          </article>
-          <article className="work-item priority">
-            <div className="work-index">02</div>
-            <div className="work-copy"><span>FECHAMENTO</span><b>Jundiaí</b><p>Aguardando retorno corrigido de Mariana ou Leonardo.</p></div>
-            <div className="work-state"><strong>Aguardando</strong><small>Ticket em 05/10</small></div>
-            <button onClick={()=>setPage('Fechamentos')} aria-label="Abrir Jundiaí"><ChevronRight size={18}/></button>
-          </article>
-          <article className="work-item completed">
-            <div className="work-index">03</div>
-            <div className="work-copy"><span>AUTOMAÇÃO</span><b>Conversas vinculadas</b><p>Histórico e respostas preservados no fluxo atual.</p></div>
-            <div className="work-state"><strong>Operacional</strong><small>Sem ação necessária</small></div>
-            <button onClick={()=>setPage('Automações')} aria-label="Abrir automações"><ChevronRight size={18}/></button>
-          </article>
-        </div>
-      </section>
-
-      <aside className="operations-side">
-        <div className="side-module system-module">
-          <div className="module-title"><span>SISTEMA</span><i/></div>
-          <strong>RIVORA online</strong>
-          <p>Ambiente local pronto para integrações externas.</p>
-          <dl>
-            <div><dt>Fluxos ativos</dt><dd>2</dd></div>
-            <div><dt>Falhas críticas</dt><dd>0</dd></div>
-            <div><dt>Última atividade</dt><dd>Agora</dd></div>
-          </dl>
-        </div>
-        <div className="side-module">
-          <div className="module-title"><span>ATIVIDADE</span><button onClick={()=>setPage('Histórico')}>Ver histórico</button></div>
-          <div className="activity-feed">
-            <TimelineItem title="Rascunho de Juatuba validado" time="Agora"/>
-            <TimelineItem title="Monitor de retorno executado" time="Última hora"/>
-            <TimelineItem title="Jundiaí segue em acompanhamento" time="Sem alteração"/>
-          </div>
-        </div>
-      </aside>
-    </div>
-
-    <section className="automation-console">
-      <div className="section-heading">
-        <div><span>FLUXOS</span><h3>Automação em execução</h3></div>
-        <button onClick={()=>setPage('Automações')}>Abrir console <ArrowUpRight size={14}/></button>
       </div>
-      <div className="automation-console-list">
-        {AUTOMATIONS.map((item,index)=><div className="console-row" key={item.name}>
-          <span className="console-index">0{index+1}</span>
+
+      <div className="dash-panel timeline-panel">
+        <header>
+          <div className="panel-title-with-icon"><span className="panel-symbol blue-symbol"><History size={19}/></span><div><h3>Linha do tempo</h3><small>Últimas atividades do sistema</small></div></div>
+          <button onClick={()=>setPage('Histórico')}>Ver histórico</button>
+        </header>
+        <div className="dash-timeline">
+          <TimelineItem title="Rascunho de Juatuba validado" time="Agora"/>
+          <TimelineItem title="Monitor de retorno executado" time="Há 1 hora"/>
+          <TimelineItem title="Jundiaí segue aguardando correção" time="Em acompanhamento"/>
+          <TimelineItem title="RIVORA atualizado" time="Agora"/>
+        </div>
+      </div>
+    </section>
+
+    <section className="dash-panel flow-health">
+      <header>
+        <div className="panel-title-with-icon"><span className="panel-symbol cyan-symbol"><Workflow size={19}/></span><div><h3>Saúde dos fluxos</h3><small>Status das automações e integrações</small></div></div>
+        <button onClick={()=>setPage('Automações')}>Monitorar <ChevronRight size={15}/></button>
+      </header>
+      <div className="flow-health-grid">
+        {AUTOMATIONS.map(item=><article key={item.name}>
           <div><b>{item.name}</b><small>{item.meta}</small></div>
           <Pill tone={item.state==='Operacional'?'green':'neutral'}>{item.state}</Pill>
-        </div>)}
+        </article>)}
       </div>
     </section>
   </>
 }
-
 function ClosuresPage(){
   const [selected,setSelected]=useState<Closure|null>(null)
   const [filter,setFilter]=useState<'Todos'|'Aguardando retorno'|'Concluídos'>('Todos')
