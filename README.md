@@ -15,3 +15,6 @@ PWA pessoal para centralizar processos, automações, tarefas, retornos e rotina
 ## Status
 
 MVP funcional em desenvolvimento. Integrações reais com Microsoft 365, SharePoint, Outlook, Power Automate e Todoist serão adicionadas por etapas.
+
+
+<!-- deploy-trigger: 2026-10-02-rivora-ui -->
