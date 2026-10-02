@@ -44,3 +44,38 @@ button, input {
 button {
   border: 0;
 }
+
+
+/* Native page scrollbar — integrated with RIVORA */
+html{
+  scrollbar-width:thin;
+  scrollbar-color:#35516a #0b1928;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar{
+  width:9px;
+  height:9px;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track{
+  background:#0b1928;
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb{
+  background:#35516a;
+  border:2px solid #0b1928;
+  border-radius:999px;
+}
+
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover{
+  background:#4d708e;
+}
+
+html::-webkit-scrollbar-corner,
+body::-webkit-scrollbar-corner{
+  background:#0b1928;
+}
