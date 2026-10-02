@@ -104,10 +104,23 @@ function App(){
     return next
   })
   return <div className="app-shell">
-    <aside className="sidebar">
-      <div className="brand"><div className="brand-icon-wrap"><img src={`${import.meta.env.BASE_URL}rivora-mark.svg`} className="brand-mark" alt=""/><i className="brand-scan"/></div><div><strong>RIVORA</strong><span>Operation Automation System</span></div></div>
-      <nav className="nav"><small>NAVEGAÇÃO</small>{NAV_ITEMS.map(([label,Icon])=><button key={label} className={page===label?'nav-item active':'nav-item'} onClick={()=>setPage(label)}><Icon size={18} strokeWidth={1.7}/><span>{label}</span>{label==='Tarefas'&&<b>{tasks.filter(t=>!t.done).length}</b>}</button>)}</nav>
-      <div className="side-foot"><div className="mode-card"><i/><div><strong>Modo local</strong><span>Pronto para integrações</span></div></div><button className="nav-item"><Settings size={18}/><span>Configurações</span></button></div>
+    <aside className="rivora-rail">
+      <div className="rail-brand">
+        <img src={`${import.meta.env.BASE_URL}rivora-mark.svg`} className="rail-logo" alt="RIVORA"/>
+        <div className="rail-brand-copy"><strong>RIVORA</strong><span>Operation Automation System</span></div>
+      </div>
+      <nav className="rail-nav">
+        <small>NAVEGAÇÃO</small>
+        {NAV_ITEMS.map(([label,Icon])=><button key={label} className={page===label?'rail-link active':'rail-link'} onClick={()=>setPage(label)}>
+          <Icon size={18} strokeWidth={1.8}/>
+          <span>{label}</span>
+          {label==='Tarefas'&&<b>{tasks.filter(t=>!t.done).length}</b>}
+        </button>)}
+      </nav>
+      <div className="rail-footer">
+        <div className="rail-status"><i/><div><strong>Modo local</strong><span>Pronto para integrações</span></div></div>
+        <button className="rail-link rail-settings"><Settings size={18}/><span>Configurações</span></button>
+      </div>
     </aside>
     <main className="main">
       <header className="topbar">
