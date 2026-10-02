@@ -299,8 +299,40 @@ function TasksPage({tasks,toggleTask,addTask}:{tasks:Task[];toggleTask:(id:numbe
 }
 function AutomationsPage(){
   const [running,setRunning]=useState<string|null>(null)
-  const test=(name:string)=>{setRunning(name);window.setTimeout(()=>setRunning(null),1000)}
-  return <PageIntro eyebrow="AUTOMAÇÕES" title="Monitor de automações" text="Visão técnica dos fluxos, dependências e últimas execuções."><div className="automation-list">{AUTOMATIONS.map(a=><article className="automation-row" key={a.name}><div className="automation-icon"><Workflow size={18}/></div><div><b>{a.name}</b><span>{a.meta}</span></div><Pill tone={a.state==='Operacional'?'green':'neutral'}>{a.state}</Pill><button onClick={()=>test(a.name)} disabled={running===a.name}><Play size={14}/>{running===a.name?'Testando...':'Teste local'}</button></article>)}</div></PageIntro>
+  const [lastRuns,setLastRuns]=useState<Record<string,string>>({})
+  const [log,setLog]=useState<Array<{time:string;text:string}>>([
+    {time:'Inicial',text:'Console local carregado. Nenhuma execução real será disparada nesta etapa.'},
+  ])
+  const test=(name:string)=>{
+    if(running) return
+    setRunning(name)
+    const started=new Date()
+    window.setTimeout(()=>{
+      const time=started.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})
+      setLastRuns(current=>({...current,[name]:time}))
+      setLog(current=>[{time,text:`Teste local concluído: ${name}`},...current].slice(0,6))
+      setRunning(null)
+    },900)
+  }
+  return <PageIntro eyebrow="AUTOMAÇÕES" title="Console de automações" text="Teste a camada local e acompanhe os fluxos antes de conectar execuções reais.">
+    <div className="automation-summary">
+      <div><span>OPERACIONAIS</span><b>2</b></div>
+      <div><span>EM PREPARAÇÃO</span><b>1</b></div>
+      <div><span>FALHAS LOCAIS</span><b className="success-text">0</b></div>
+    </div>
+    <div className="automation-list">
+      {AUTOMATIONS.map(a=><article className="automation-row" key={a.name}>
+        <div className="automation-icon"><Workflow size={18}/></div>
+        <div><b>{a.name}</b><span>{a.meta}</span>{lastRuns[a.name]&&<small className="last-run">Último teste local: {lastRuns[a.name]}</small>}</div>
+        <Pill tone={a.state==='Operacional'?'green':'neutral'}>{a.state}</Pill>
+        <button onClick={()=>test(a.name)} disabled={running!==null}><Play size={14}/>{running===a.name?'Executando...':'Teste local'}</button>
+      </article>)}
+    </div>
+    <section className="automation-log">
+      <div className="automation-log-head"><span>LOG LOCAL</span><small>As ações abaixo não executam Power Automate, Outlook ou SharePoint.</small></div>
+      <div>{log.map((item,index)=><article key={item.time+index}><span>{item.time}</span><b>{item.text}</b><CheckCircle2 size={14}/></article>)}</div>
+    </section>
+  </PageIntro>
 }
 function ImportsPage(){
   const [count,setCount]=useState(0)
