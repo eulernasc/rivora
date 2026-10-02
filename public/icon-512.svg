@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs>
+<linearGradient id="metal" x1="86" y1="70" x2="426" y2="438" gradientUnits="userSpaceOnUse">
+<stop stop-color="#f7fbff"/><stop offset=".35" stop-color="#73dcff"/><stop offset=".68" stop-color="#0aa7ed"/><stop offset="1" stop-color="#0452a8"/>
+</linearGradient>
+<linearGradient id="blue" x1="214" y1="180" x2="405" y2="433" gradientUnits="userSpaceOnUse">
+<stop stop-color="#25ddff"/><stop offset="1" stop-color="#0062c8"/>
+</linearGradient>
+<radialGradient id="bg" cx="0" cy="0" r="1" gradientTransform="translate(350 140) rotate(130) scale(430)">
+<stop stop-color="#0d3357"/><stop offset=".58" stop-color="#061321"/><stop offset="1" stop-color="#02060b"/>
+</radialGradient>
+</defs>
+<rect width="512" height="512" rx="112" fill="url(#bg)"/>
+<path d="M102 155h213c75 0 125 43 125 105 0 48-28 86-75 102l-68-73h22c36 0 57-12 57-36 0-25-21-36-57-36H159z" fill="url(#metal)"/>
+<path d="M184 220h80l151 202h-93l-83-113v113h-55z" fill="url(#blue)"/>
+<path d="M70 220h86M51 270h105M85 321h71" stroke="#19c8f5" stroke-width="24" stroke-linecap="round"/>
+</svg>
