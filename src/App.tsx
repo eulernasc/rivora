@@ -234,9 +234,32 @@ function Overview({today,tasks,setPage}:{today:string;tasks:Task[];setPage:(p:Pa
 
 function ClosuresPage(){
   const [selected,setSelected]=useState<Closure|null>(null)
+  const [filter,setFilter]=useState<'Todos'|'Aguardando retorno'|'Concluídos'>('Todos')
+  const [showSummary,setShowSummary]=useState(false)
+  const visible=CLOSURES.filter(item=>{
+    if(filter==='Todos') return true
+    if(filter==='Aguardando retorno') return item.status==='Aguardando retorno'
+    return item.status==='Concluído'
+  })
   return <PageIntro eyebrow="FECHAMENTOS" title="Fechamentos operacionais" text="Acompanhe o ciclo completo do arquivo ao retorno corrigido.">
-    <div className="toolbar"><div><button className="chip active">Todos</button><button className="chip">Aguardando retorno</button><button className="chip">Concluídos</button></div><button className="secondary"><SlidersHorizontal size={14}/>Filtros</button></div>
-    <section className="panel table-panel"><div className="table-row table-head"><span>Operação</span><span>Período</span><span>Registros</span><span>Status</span><span>Próxima ação</span><span/></div>{CLOSURES.map(c=><button className="table-row" key={c.op} onClick={()=>setSelected(c)}><b>{c.op}</b><span>{c.period}</span><span>{c.records}</span><span><Pill>{c.status}</Pill></span><span>{c.next}</span><ChevronRight size={16}/></button>)}</section>
+    <div className="closure-status-line">
+      <div><span>EM ACOMPANHAMENTO</span><b>{CLOSURES.filter(c=>c.status==='Aguardando retorno').length}</b></div>
+      <div><span>REGISTROS NO CICLO</span><b>{CLOSURES.reduce((sum,c)=>sum+c.records,0)}</b></div>
+      <div><span>PRÓXIMO MARCO</span><b>05/10</b></div>
+    </div>
+    <div className="toolbar">
+      <div>{(['Todos','Aguardando retorno','Concluídos'] as const).map(item=><button key={item} className={filter===item?'chip active':'chip'} onClick={()=>setFilter(item)}>{item}</button>)}</div>
+      <button className={showSummary?'secondary active':'secondary'} onClick={()=>setShowSummary(v=>!v)}><SlidersHorizontal size={14}/>Resumo</button>
+    </div>
+    {showSummary&&<div className="closure-summary">
+      <span><b>Juatuba</b> • 464 registros • retorno pendente</span>
+      <span><b>Jundiaí</b> • 53 registros • retorno pendente</span>
+      <small>Os dados ainda são locais; a sincronização com Outlook e SharePoint entra quando conectarmos as APIs corporativas.</small>
+    </div>}
+    <section className="panel table-panel">
+      <div className="table-row table-head"><span>Operação</span><span>Período</span><span>Registros</span><span>Status</span><span>Próxima ação</span><span/></div>
+      {visible.length?visible.map(c=><button className="table-row" key={c.op} onClick={()=>setSelected(c)}><b>{c.op}</b><span>{c.period}</span><span>{c.records}</span><span><Pill>{c.status}</Pill></span><span>{c.next}</span><ChevronRight size={16}/></button>):<div className="table-empty">Nenhum fechamento neste filtro.</div>}
+    </section>
     {selected&&<Drawer item={selected} close={()=>setSelected(null)}/>}
   </PageIntro>
 }
