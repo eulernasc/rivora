@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
-  Activity, Archive, Bell, Bot, CalendarDays, CheckCircle2, ChevronRight,
+  Activity, Archive, ArrowUpRight, Bell, Bot, CalendarDays, CheckCircle2, ChevronRight, Command,
   ClipboardCheck, Clock3, Download, FileCheck2, FileSpreadsheet, Gauge,
   History, Inbox, LayoutDashboard, ListTodo, Play, Search, Settings,
   ShieldCheck, SlidersHorizontal, Workflow, XCircle,
@@ -98,19 +98,87 @@ function App(){
 }
 
 function Overview({today,tasks,setPage}:{today:string;tasks:Task[];setPage:(p:Page)=>void}){
+  const pending=tasks.filter(t=>!t.done).length
   return <>
-    <div className="hero-row"><div><p><CalendarDays size={14}/>{today}</p><h2>Centro de comando operacional</h2><span>O que exige ação, o que está em curso e o que já foi automatizado.</span></div><div className="health-badge"><i/><div><strong>Ambiente estável</strong><small>3 serviços monitorados</small></div></div></div>
-    <div className="metrics">
-      <Metric icon={Activity} label="Processos ativos" value="7" sub="2 aguardando retorno"/>
-      <Metric icon={ClipboardCheck} label="Pendências" value={String(tasks.filter(t=>!t.done).length)} sub="Próximo prazo 05/10" tone="warn"/>
-      <Metric icon={Bot} label="Automações" value="3" sub="2 operacionais • 1 em preparo" tone="ok"/>
-      <Metric icon={ShieldCheck} label="Execuções seguras" value="100%" sub="Nenhum reenvio detectado"/>
+    <div className="home-head">
+      <div>
+        <p className="home-date"><CalendarDays size={14}/>{today}</p>
+        <h2>Operação em andamento</h2>
+        <span>Acompanhe o que está bloqueado, o que está correndo e o que precisa da sua decisão.</span>
+      </div>
+      <button className="command-action" onClick={()=>setPage('Tarefas')}><Command size={16}/><span>Abrir fila operacional</span><kbd>{pending}</kbd></button>
     </div>
-    <div className="split-grid">
-      <section className="panel"><PanelHead kicker="PRIORIDADE" title="Fila de atenção" action="Abrir tarefas" onClick={()=>setPage('Tarefas')}/><div className="queue"><QueueRow tone="amber" title="Juatuba" text="Aguardando retorno corrigido" meta="Ticket 05/10"/><QueueRow tone="amber" title="Jundiaí" text="Aguardando retorno corrigido" meta="Ticket 05/10"/><QueueRow tone="green" title="Fechamentos enviados" text="Conversas vinculadas e preservadas" meta="OK"/></div></section>
-      <section className="panel"><PanelHead kicker="FLUXO" title="Linha do tempo" action="Histórico" onClick={()=>setPage('Histórico')}/><div className="timeline"><TimelineItem title="Rascunho de Juatuba validado" time="Agora"/><TimelineItem title="Monitor de retorno executado" time="Última hora"/><TimelineItem title="Jundiaí segue aguardando correção" time="Em acompanhamento"/></div></section>
+
+    <div className="ops-strip">
+      <div><span>PROCESSOS</span><b>7</b><small>ativos agora</small></div>
+      <div><span>PENDÊNCIAS</span><b>{pending}</b><small>próximo marco 05/10</small></div>
+      <div><span>AUTOMAÇÕES</span><b>2/3</b><small>uma em preparação</small></div>
+      <div className="system-ok"><span>ESTADO</span><b>Estável</b><small>sem falhas críticas</small></div>
     </div>
-    <section className="panel auto-panel"><PanelHead kicker="AUTOMAÇÃO" title="Saúde dos fluxos" action="Monitorar" onClick={()=>setPage('Automações')}/><div className="automation-strip">{AUTOMATIONS.map(item=><AutomationMini key={item.name} {...item}/>)}</div></section>
+
+    <div className="operations-layout">
+      <section className="operations-main">
+        <div className="section-heading">
+          <div><span>AGORA</span><h3>Fila operacional</h3></div>
+          <button onClick={()=>setPage('Tarefas')}>Abrir todas <ArrowUpRight size={14}/></button>
+        </div>
+        <div className="work-queue">
+          <article className="work-item priority">
+            <div className="work-index">01</div>
+            <div className="work-copy"><span>FECHAMENTO</span><b>Juatuba</b><p>Aguardando retorno corrigido de Mariana ou Leonardo.</p></div>
+            <div className="work-state"><strong>Aguardando</strong><small>Ticket em 05/10</small></div>
+            <button onClick={()=>setPage('Fechamentos')} aria-label="Abrir Juatuba"><ChevronRight size={18}/></button>
+          </article>
+          <article className="work-item priority">
+            <div className="work-index">02</div>
+            <div className="work-copy"><span>FECHAMENTO</span><b>Jundiaí</b><p>Aguardando retorno corrigido de Mariana ou Leonardo.</p></div>
+            <div className="work-state"><strong>Aguardando</strong><small>Ticket em 05/10</small></div>
+            <button onClick={()=>setPage('Fechamentos')} aria-label="Abrir Jundiaí"><ChevronRight size={18}/></button>
+          </article>
+          <article className="work-item completed">
+            <div className="work-index">03</div>
+            <div className="work-copy"><span>AUTOMAÇÃO</span><b>Conversas vinculadas</b><p>Histórico e respostas preservados no fluxo atual.</p></div>
+            <div className="work-state"><strong>Operacional</strong><small>Sem ação necessária</small></div>
+            <button onClick={()=>setPage('Automações')} aria-label="Abrir automações"><ChevronRight size={18}/></button>
+          </article>
+        </div>
+      </section>
+
+      <aside className="operations-side">
+        <div className="side-module system-module">
+          <div className="module-title"><span>SISTEMA</span><i/></div>
+          <strong>RIVORA online</strong>
+          <p>Ambiente local pronto para integrações externas.</p>
+          <dl>
+            <div><dt>Fluxos ativos</dt><dd>2</dd></div>
+            <div><dt>Falhas críticas</dt><dd>0</dd></div>
+            <div><dt>Última atividade</dt><dd>Agora</dd></div>
+          </dl>
+        </div>
+        <div className="side-module">
+          <div className="module-title"><span>ATIVIDADE</span><button onClick={()=>setPage('Histórico')}>Ver histórico</button></div>
+          <div className="activity-feed">
+            <TimelineItem title="Rascunho de Juatuba validado" time="Agora"/>
+            <TimelineItem title="Monitor de retorno executado" time="Última hora"/>
+            <TimelineItem title="Jundiaí segue em acompanhamento" time="Sem alteração"/>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <section className="automation-console">
+      <div className="section-heading">
+        <div><span>FLUXOS</span><h3>Automação em execução</h3></div>
+        <button onClick={()=>setPage('Automações')}>Abrir console <ArrowUpRight size={14}/></button>
+      </div>
+      <div className="automation-console-list">
+        {AUTOMATIONS.map((item,index)=><div className="console-row" key={item.name}>
+          <span className="console-index">0{index+1}</span>
+          <div><b>{item.name}</b><small>{item.meta}</small></div>
+          <Pill tone={item.state==='Operacional'?'green':'neutral'}>{item.state}</Pill>
+        </div>)}
+      </div>
+    </section>
   </>
 }
 
