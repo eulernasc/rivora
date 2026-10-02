@@ -335,8 +335,52 @@ function AutomationsPage(){
   </PageIntro>
 }
 function ImportsPage(){
-  const [count,setCount]=useState(0)
-  return <PageIntro eyebrow="IMPORTAÇÕES" title="Controle de importações" text="Prazos, fontes, validações e status em um único fluxo."><div className="empty-state"><Archive size={30}/><h3>Estrutura pronta</h3><p>Use o teste abaixo para simular novos processos antes de conectarmos as fontes reais.</p><button className="secondary" onClick={()=>setCount(v=>v+1)}>Criar processo local</button>{count>0&&<small>{count} processo(s) de teste criado(s).</small>}</div></PageIntro>
+  type ImportItem={id:number;operation:string;source:string;due:string;status:'Planejada'|'Em validação'|'Concluída'}
+  const initial:ImportItem[]=[
+    {id:1,operation:'Juatuba',source:'Ticket Log',due:'05/10',status:'Planejada'},
+    {id:2,operation:'Jundiaí',source:'Ticket Log',due:'05/10',status:'Planejada'},
+  ]
+  const [items,setItems]=useState<ImportItem[]>(()=>{
+    const saved=localStorage.getItem('rivora.imports')
+    return saved?JSON.parse(saved):initial
+  })
+  const [creating,setCreating]=useState(false)
+  const [operation,setOperation]=useState('')
+  const [source,setSource]=useState('Ticket Log')
+  const [due,setDue]=useState('Sem prazo')
+  const save=(next:ImportItem[])=>{setItems(next);localStorage.setItem('rivora.imports',JSON.stringify(next))}
+  const add=()=>{
+    if(!operation.trim()) return
+    save([...items,{id:Math.max(0,...items.map(i=>i.id))+1,operation:operation.trim(),source:source.trim()||'Não definida',due,status:'Planejada'}])
+    setOperation('');setDue('Sem prazo');setCreating(false)
+  }
+  const advance=(id:number)=>save(items.map(item=>{
+    if(item.id!==id) return item
+    const status=item.status==='Planejada'?'Em validação':item.status==='Em validação'?'Concluída':'Planejada'
+    return {...item,status}
+  }))
+  return <PageIntro eyebrow="IMPORTAÇÕES" title="Controle de importações" text="Fila local de prazos, fontes, validações e status.">
+    <div className="import-toolbar">
+      <div><span>ABERTAS</span><b>{items.filter(i=>i.status!=='Concluída').length}</b></div>
+      <div><span>CONCLUÍDAS</span><b>{items.filter(i=>i.status==='Concluída').length}</b></div>
+      <button onClick={()=>setCreating(v=>!v)}>{creating?'Cancelar':'+ Nova importação'}</button>
+    </div>
+    {creating&&<div className="import-composer">
+      <label><span>OPERAÇÃO</span><input value={operation} onChange={e=>setOperation(e.target.value)} placeholder="Ex.: Juatuba" autoFocus/></label>
+      <label><span>ORIGEM</span><input value={source} onChange={e=>setSource(e.target.value)} placeholder="Sistema ou arquivo"/></label>
+      <label><span>PRAZO</span><input value={due} onChange={e=>setDue(e.target.value)} placeholder="Ex.: 05/10"/></label>
+      <button onClick={add}>Adicionar</button>
+    </div>}
+    <div className="import-list">
+      {items.map(item=><article key={item.id}>
+        <span className="import-index">{String(item.id).padStart(2,'0')}</span>
+        <div><b>{item.operation}</b><small>{item.source}</small></div>
+        <span className="import-due">{item.due}</span>
+        <Pill tone={item.status==='Concluída'?'green':item.status==='Em validação'?'amber':'neutral'}>{item.status}</Pill>
+        <button onClick={()=>advance(item.id)}>{item.status==='Concluída'?'Reabrir':'Avançar'}<ChevronRight size={14}/></button>
+      </article>)}
+    </div>
+  </PageIntro>
 }
 function ReturnsPage(){return <PageIntro eyebrow="RETORNOS" title="Retornos e conversas" text="Respostas, anexos corrigidos e liberações em um único lugar."><div className="return-grid">{['Juatuba','Jundiaí'].map(op=><article className="return-card" key={op}><div><Inbox size={19}/><Pill>Aguardando resposta</Pill></div><h3>{op}</h3><p>Mariana Tourino Ribeiro • Leonardo Luis Leite</p><button>Ver acompanhamento <ChevronRight size={14}/></button></article>)}</div></PageIntro>}
 function AnalyticsPage(){return <PageIntro eyebrow="ANÁLISES" title="Análises operacionais" text="Área preparada para cruzamentos, CPH, divergências e indicadores."><div className="analysis-grid"><Analysis label="PROCESSOS" value="7" detail="em acompanhamento"/><Analysis label="AUTOMAÇÃO" value="67%" detail="dos fluxos planejados iniciados"/><Analysis label="PENDÊNCIAS" value="4" detail="dependências externas"/></div></PageIntro>}
