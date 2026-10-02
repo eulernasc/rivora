@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
-  Activity, Archive, ArrowUpRight, Bell, Bot, CalendarDays, CheckCircle2, ChevronRight, Command,
-  ClipboardCheck, Clock3, Download, FileCheck2, FileSpreadsheet, Gauge,
+  Archive, ArrowUpRight, Bell, CalendarDays, CheckCircle2, ChevronRight, Command,
+  Clock3, Download, FileCheck2, FileSpreadsheet, Gauge,
   History, Inbox, LayoutDashboard, ListTodo, Play, Search, Settings,
-  ShieldCheck, SlidersHorizontal, Workflow, XCircle,
+  SlidersHorizontal, Workflow, XCircle,
 } from 'lucide-react'
 import './App.css'
 
@@ -204,11 +204,7 @@ function ReturnsPage(){return <PageIntro eyebrow="RETORNOS" title="Retornos e co
 function AnalyticsPage(){return <PageIntro eyebrow="ANÁLISES" title="Análises operacionais" text="Área preparada para cruzamentos, CPH, divergências e indicadores."><div className="analysis-grid"><Analysis label="PROCESSOS" value="7" detail="em acompanhamento"/><Analysis label="AUTOMAÇÃO" value="67%" detail="dos fluxos planejados iniciados"/><Analysis label="PENDÊNCIAS" value="4" detail="dependências externas"/></div></PageIntro>}
 function HistoryPage(){return <PageIntro eyebrow="HISTÓRICO" title="Registro operacional" text="Rastro das ações para saber o que aconteceu e quando."><div className="history-list"><HistoryRow icon={FileCheck2} title="Rascunho Juatuba validado" text="Resposta na mesma conversa, com anexo e assinatura."/><HistoryRow icon={Workflow} title="Monitor executado" text="Nenhum retorno corrigido identificado na última verificação."/><HistoryRow icon={CheckCircle2} title="Base do RIVORA criada" text="PWA responsivo preparado para publicação e integrações."/></div></PageIntro>}
 function PageIntro({eyebrow,title,text,children}:{eyebrow:string;title:string;text:string;children:ReactNode}){return <><div className="intro"><span>{eyebrow}</span><h2>{title}</h2><p>{text}</p></div>{children}</>}
-function Metric({icon:Icon,label,value,sub,tone=''}:{icon:typeof Activity;label:string;value:string;sub:string;tone?:string}){return <article className={`metric ${tone}`}><div><Icon size={18}/></div><span>{label}</span><b>{value}</b><small>{sub}</small></article>}
-function PanelHead({kicker,title,action,onClick}:{kicker:string;title:string;action:string;onClick:()=>void}){return <div className="panel-head"><div><span>{kicker}</span><h3>{title}</h3></div><button onClick={onClick}>{action}<ChevronRight size={14}/></button></div>}
-function QueueRow({tone,title,text,meta}:{tone:string;title:string;text:string;meta:string}){return <div className="queue-row"><i className={tone}/><div><b>{title}</b><span>{text}</span></div><strong>{meta}</strong><ChevronRight size={15}/></div>}
 function TimelineItem({title,time}:{title:string;time:string}){return <div className="timeline-item"><i/><div><b>{title}</b><span>{time}</span></div></div>}
-function AutomationMini({name,state,meta}:{name:string;state:string;meta:string}){return <div className="automation-mini"><div><b>{name}</b><span>{meta}</span></div><Pill tone={state==='Operacional'?'green':'neutral'}>{state}</Pill></div>}
 function Pill({children,tone='amber'}:{children:ReactNode;tone?:string}){return <span className={`pill ${tone}`}>{children}</span>}
 function Analysis({label,value,detail}:{label:string;value:string;detail:string}){return <article className="analysis-card"><span>{label}</span><b>{value}</b><small>{detail}</small></article>}
 function HistoryRow({icon:Icon,title,text}:{icon:typeof Activity;title:string;text:string}){return <div className="history-row"><div><Icon size={17}/></div><section><b>{title}</b><span>{text}</span></section><small>02/10/2026</small></div>}
