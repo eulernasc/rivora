@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   Activity, Archive, Bell, Bot, CalendarDays, CheckCircle2, ChevronRight,
   ClipboardCheck, Clock3, Download, FileCheck2, FileSpreadsheet, Gauge,
@@ -34,11 +34,33 @@ const AUTOMATIONS = [
 function App(){
   const [page,setPage]=useState<Page>('Visão geral')
   const [query,setQuery]=useState('')
+  const [installEvent,setInstallEvent]=useState<any>(null)
+  const [installMessage,setInstallMessage]=useState('')
   const [tasks,setTasks]=useState<Task[]>(()=>{
     const saved=localStorage.getItem('rivora.tasks')
     return saved?JSON.parse(saved):TASK_SEED
   })
+  useEffect(()=>{
+    const handler=(event:any)=>{ event.preventDefault(); setInstallEvent(event) }
+    window.addEventListener('beforeinstallprompt',handler)
+    return()=>window.removeEventListener('beforeinstallprompt',handler)
+  },[])
   const today=useMemo(()=>new Intl.DateTimeFormat('pt-BR',{weekday:'long',day:'2-digit',month:'long'}).format(new Date()),[])
+  const installApp=async()=>{
+    if(window.matchMedia('(display-mode: standalone)').matches){
+      setInstallMessage('RIVORA já está instalado neste dispositivo.')
+      return
+    }
+    if(installEvent){
+      await installEvent.prompt()
+      const choice=await installEvent.userChoice
+      setInstallMessage(choice.outcome==='accepted'?'Instalação iniciada.':'Instalação cancelada.')
+      if(choice.outcome==='accepted') setInstallEvent(null)
+      return
+    }
+    const opera=/OPR\//.test(navigator.userAgent)
+    setInstallMessage(opera?'O Opera GX no Windows não oferece instalação PWA completa. Abra o RIVORA no Microsoft Edge ou Google Chrome para instalar como aplicativo.':'Use a opção de instalar aplicativo do navegador. Edge e Chrome oferecem suporte completo ao RIVORA como PWA.')
+  }
   const toggleTask=(id:number)=>setTasks(current=>{
     const next=current.map(task=>task.id===id?{...task,done:!task.done}:task)
     localStorage.setItem('rivora.tasks',JSON.stringify(next))
@@ -55,11 +77,12 @@ function App(){
         <div className="page-title"><span>RIVORA / {page.toUpperCase()}</span><h1>{page}</h1></div>
         <div className="top-actions">
           <label className="search-box"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar no Rivora"/><kbd>CTRL K</kbd></label>
-          <button className="install-button" onClick={()=>alert('No navegador compatível, use a opção “Instalar aplicativo”.')}><Download size={15}/>Instalar</button>
+          <button className="install-button" onClick={installApp}><Download size={15}/>Instalar</button>
           <button className="icon-button" aria-label="Notificações"><Bell size={18}/></button>
           <div className="user-chip"><span>EN</span><div><strong>Euler Nascimento</strong><small>Administrador</small></div></div>
         </div>
       </header>
+      {installMessage&&<div className="install-note"><span>{installMessage}</span><button onClick={()=>setInstallMessage('')} aria-label="Fechar"><XCircle size={16}/></button></div>}
       <section className="workspace">
         {page==='Visão geral'&&<Overview today={today} tasks={tasks} setPage={setPage}/>}
         {page==='Fechamentos'&&<ClosuresPage/>}
