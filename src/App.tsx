@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
-  Archive, ArrowUpRight, Bell, CalendarDays, CheckCircle2, ChevronRight, Command,
+  Archive, Bell, CalendarDays, CheckCircle2, ChevronRight,
   Clock3, Download, FileCheck2, FileSpreadsheet, Gauge,
   History, Inbox, LayoutDashboard, ListTodo, Play, Search, Settings,
   SlidersHorizontal, Workflow, XCircle,
