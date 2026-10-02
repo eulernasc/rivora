@@ -165,3 +165,22 @@ body{background:
 @media(max-width:760px){
   .search-popover,.notification-popover{top:66px;left:10px;right:10px;width:auto}
 }
+
+/* Closures module */
+.closure-status-line{display:grid;grid-template-columns:repeat(3,1fr);margin-bottom:12px;border:1px solid var(--line);background:rgba(7,15,25,.62)}
+.closure-status-line>div{min-height:66px;padding:13px 15px;border-right:1px solid var(--line)}
+.closure-status-line>div:last-child{border-right:0}
+.closure-status-line span,.closure-status-line b{display:block}
+.closure-status-line span{color:#536f8a;font-size:8px;letter-spacing:.14em}
+.closure-status-line b{margin-top:7px;font-size:17px;font-weight:600}
+.secondary.active{color:#d6efff;border-color:rgba(28,212,243,.28);background:rgba(21,157,255,.07)}
+.closure-summary{display:grid;gap:6px;margin:-2px 0 10px;padding:11px 13px;border-left:2px solid #1baef1;background:rgba(7,20,33,.66)}
+.closure-summary span{color:#7b92a8;font-size:9px}
+.closure-summary span b{color:#c5d7e8}
+.closure-summary small{margin-top:3px;color:#51677e;font-size:8px;line-height:1.5}
+.table-empty{padding:28px 16px;color:#61778e;font-size:9px;text-align:center}
+@media(max-width:760px){
+  .closure-status-line{grid-template-columns:1fr}
+  .closure-status-line>div{border-right:0;border-bottom:1px solid var(--line)}
+  .closure-status-line>div:last-child{border-bottom:0}
+}
