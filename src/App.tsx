@@ -144,7 +144,7 @@ function App(){
         {page==='Tarefas'&&<TasksPage tasks={tasks} toggleTask={toggleTask} addTask={addTask}/>} 
         {page==='Automações'&&<AutomationsPage/>}
         {page==='Importações'&&<ImportsPage/>}
-        {page==='Retornos'&&<ReturnsPage/>}
+        {page==='Retornos'&&<ReturnsPage setPage={setPage}/>} 
         {page==='Análises'&&<AnalyticsPage/>}
         {page==='Histórico'&&<HistoryPage/>}
       </section>
@@ -382,7 +382,40 @@ function ImportsPage(){
     </div>
   </PageIntro>
 }
-function ReturnsPage(){return <PageIntro eyebrow="RETORNOS" title="Retornos e conversas" text="Respostas, anexos corrigidos e liberações em um único lugar."><div className="return-grid">{['Juatuba','Jundiaí'].map(op=><article className="return-card" key={op}><div><Inbox size={19}/><Pill>Aguardando resposta</Pill></div><h3>{op}</h3><p>Mariana Tourino Ribeiro • Leonardo Luis Leite</p><button>Ver acompanhamento <ChevronRight size={14}/></button></article>)}</div></PageIntro>}
+function ReturnsPage({setPage}:{setPage:(p:Page)=>void}){
+  type ReturnState={op:string;received:boolean;updated:string}
+  const [states,setStates]=useState<ReturnState[]>(()=>{
+    const saved=localStorage.getItem('rivora.returns')
+    return saved?JSON.parse(saved):[
+      {op:'Juatuba',received:false,updated:'Aguardando resposta'},
+      {op:'Jundiaí',received:false,updated:'Aguardando resposta'},
+    ]
+  })
+  const toggle=(op:string)=>{
+    const next=states.map(item=>item.op===op?{...item,received:!item.received,updated:!item.received?'Marcado localmente como recebido':'Aguardando resposta'}:item)
+    setStates(next)
+    localStorage.setItem('rivora.returns',JSON.stringify(next))
+  }
+  return <PageIntro eyebrow="RETORNOS" title="Retornos e conversas" text="Acompanhe respostas, anexos corrigidos e liberações sem misturar o estado local com o e-mail real.">
+    <div className="returns-status">
+      <div><span>AGUARDANDO</span><b>{states.filter(s=>!s.received).length}</b></div>
+      <div><span>RECEBIDOS LOCALMENTE</span><b>{states.filter(s=>s.received).length}</b></div>
+      <small>Marcar aqui não altera Outlook, SharePoint ou Power Automate.</small>
+    </div>
+    <div className="return-grid">
+      {states.map(item=><article className={item.received?'return-card received':'return-card'} key={item.op}>
+        <div><Inbox size={19}/><Pill tone={item.received?'green':'amber'}>{item.received?'Recebido local':'Aguardando resposta'}</Pill></div>
+        <h3>{item.op}</h3>
+        <p>Mariana Tourino Ribeiro • Leonardo Luis Leite</p>
+        <span className="return-updated">{item.updated}</span>
+        <div className="return-actions">
+          <button onClick={()=>toggle(item.op)}>{item.received?'Reabrir acompanhamento':'Marcar recebido local'}</button>
+          <button onClick={()=>setPage('Fechamentos')}>Abrir fechamento <ChevronRight size={14}/></button>
+        </div>
+      </article>)}
+    </div>
+  </PageIntro>
+}
 function AnalyticsPage(){return <PageIntro eyebrow="ANÁLISES" title="Análises operacionais" text="Área preparada para cruzamentos, CPH, divergências e indicadores."><div className="analysis-grid"><Analysis label="PROCESSOS" value="7" detail="em acompanhamento"/><Analysis label="AUTOMAÇÃO" value="67%" detail="dos fluxos planejados iniciados"/><Analysis label="PENDÊNCIAS" value="4" detail="dependências externas"/></div></PageIntro>}
 function HistoryPage(){return <PageIntro eyebrow="HISTÓRICO" title="Registro operacional" text="Rastro das ações para saber o que aconteceu e quando."><div className="history-list"><HistoryRow icon={FileCheck2} title="Rascunho Juatuba validado" text="Resposta na mesma conversa, com anexo e assinatura."/><HistoryRow icon={Workflow} title="Monitor executado" text="Nenhum retorno corrigido identificado na última verificação."/><HistoryRow icon={CheckCircle2} title="Base do RIVORA criada" text="PWA responsivo preparado para publicação e integrações."/></div></PageIntro>}
 function PageIntro({eyebrow,title,text,children}:{eyebrow:string;title:string;text:string;children:ReactNode}){return <><div className="intro"><span>{eyebrow}</span><h2>{title}</h2><p>{text}</p></div>{children}</>}
