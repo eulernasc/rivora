@@ -286,3 +286,169 @@ body{background:
   .search-box{display:none}
   .user-chip div{display:none}
 }
+
+/* Legibility pass — brighter navy surfaces, larger text, stronger hierarchy */
+body{
+  background:
+    radial-gradient(circle at 88% 5%,rgba(22,111,171,.10),transparent 28rem),
+    linear-gradient(180deg,#07111d 0%,#091522 100%);
+}
+
+.app-shell{
+  background:linear-gradient(180deg,#07111d 0%,#0a1725 100%);
+}
+
+.sidebar{
+  background:linear-gradient(180deg,#06111d 0%,#081725 100%);
+  border-right-color:rgba(135,176,210,.22);
+}
+
+.brand strong{font-size:16px}
+.brand span{font-size:9px;color:#8ea4b8}
+.nav>small{font-size:9px;color:#6f8aa3}
+.nav-item{min-height:46px;color:#93a8bb}
+.nav-item span{font-size:13px}
+.nav-item.active{color:#f7fbff;background:linear-gradient(90deg,rgba(37,161,240,.16),rgba(18,62,95,.08))}
+.nav-item b{font-size:10px}
+
+.mode-card{
+  background:linear-gradient(180deg,#0c1b2b,#0a1826);
+  border-color:rgba(135,176,210,.22);
+}
+.mode-card strong{font-size:11px}
+.mode-card span{font-size:9.5px;color:#7e95aa}
+
+.topbar{
+  background:rgba(8,20,33,.94);
+  border-bottom-color:rgba(135,176,210,.22);
+  min-height:82px;
+}
+.page-title>span{font-size:9px;color:#718da8}
+.page-title h1{font-size:21px}
+.search-box{
+  height:40px;
+  background:#0b1929;
+  border-color:rgba(135,176,210,.24);
+}
+.search-box input{font-size:12.5px;color:#eef6ff}
+.search-box kbd{font-size:9px;color:#8aa1b5}
+.install-button{height:40px;font-size:11px;color:#b6cce0}
+.icon-button{height:40px;width:40px;color:#a3b9cc}
+.user-chip>span{width:36px;height:36px;font-size:11px}
+.user-chip strong{font-size:11px}
+.user-chip small{font-size:9px;color:#8097ac}
+
+.workspace{padding:32px}
+.home-date{font-size:11px;color:#81a1bb}
+.home-head h2{font-size:clamp(30px,2.6vw,39px)}
+.home-head>div>span{font-size:13px;color:#91a6ba}
+.command-action{height:42px;font-size:11px}
+.command-action span{font-size:11px}
+
+.ops-strip{
+  background:#0b1928;
+  border-color:rgba(135,176,210,.22);
+}
+.ops-strip>div{min-height:88px}
+.ops-strip span{font-size:9px;color:#718da8}
+.ops-strip b{font-size:24px}
+.ops-strip small{font-size:9.5px;color:#8198ac}
+
+.operations-main,.operations-side,.automation-console,.panel{
+  background:linear-gradient(180deg,#0b1a2a 0%,#0a1725 100%);
+  border-color:rgba(135,176,210,.22);
+  border-radius:10px;
+  overflow:hidden;
+  box-shadow:0 12px 28px rgba(0,0,0,.14),inset 0 1px rgba(255,255,255,.015);
+}
+
+.section-heading{min-height:64px}
+.section-heading span{font-size:9px;color:#7190aa}
+.section-heading h3{font-size:13.5px}
+.section-heading button{font-size:10px;color:#8eabc2}
+
+.work-item{min-height:102px}
+.work-index{font-size:10px;color:#62809a}
+.work-copy span{font-size:8px;color:#7290aa}
+.work-copy b{font-size:12.5px}
+.work-copy p{font-size:10.5px;color:#849bb0;line-height:1.45}
+.work-state strong{font-size:10px}
+.work-state small{font-size:9px;color:#70889e}
+
+.module-title>span{font-size:9px;color:#7391aa}
+.system-module>strong{font-size:15px}
+.system-module>p{font-size:10px;color:#8198ac}
+.system-module dt,.system-module dd{font-size:9.5px}
+
+.timeline-item b{font-size:10.5px}
+.timeline-item span{font-size:9px;color:#71899f}
+
+.console-row{min-height:82px}
+.console-index{font-size:10px}
+.console-row b{font-size:10.5px}
+.console-row small{font-size:9px;color:#71899f}
+
+.intro>span{font-size:9px;color:#7290aa}
+.intro h2{font-size:31px}
+.intro p{font-size:12px;color:#8da3b7}
+
+.chip,.secondary,.task-new,.import-toolbar>button{font-size:10px}
+.table-head{font-size:9px;color:#6f89a1}
+.table-row{min-height:62px;color:#c1d0de}
+.table-row b,.table-row span{font-size:10.5px}
+
+.task,.automation-row,.history-row,.import-list article,.return-card,.analysis-card{
+  background:#0b1a2a;
+  border-color:rgba(135,176,210,.22);
+  border-radius:9px;
+}
+
+.task b,.automation-row b,.history-row b,.import-list b{font-size:11px}
+.task span,.automation-row span,.history-row span,.import-list small{font-size:9.5px;color:#7f97ac}
+.task strong,.history-row small,.import-due{font-size:9.5px}
+.automation-row button,.import-list article>button,.return-actions button{font-size:9.5px!important}
+
+.pill{font-size:9px;padding:5px 8px;border-radius:6px}
+
+.return-card h3{font-size:19px}
+.return-card p{font-size:10px;color:#8198ad}
+.return-updated{font-size:9px}
+.analysis-card span{font-size:9px}
+.analysis-card b{font-size:34px}
+.analysis-card small{font-size:9.5px}
+
+.search-popover,.notification-popover{
+  background:rgba(9,22,36,.98);
+  border-color:rgba(135,176,210,.26);
+  border-radius:10px;
+}
+.popover-head>span,.popover-head kbd{font-size:9px}
+.search-results b{font-size:11px}
+.search-results small{font-size:9.5px}
+.notification-list b{font-size:10px}
+.notification-list small{font-size:9px}
+
+.closure-status-line,.automation-summary,.import-toolbar,.returns-status{
+  background:#0b1928;
+  border-color:rgba(135,176,210,.22);
+  border-radius:9px;
+  overflow:hidden;
+}
+.closure-status-line span,.automation-summary span,.import-toolbar span,.returns-status span{font-size:9px;color:#718ea8}
+.closure-status-line b,.automation-summary b,.import-toolbar b,.returns-status b{font-size:19px}
+
+.task-composer,.import-composer,.automation-log{
+  background:#0b1928;
+  border-color:rgba(135,176,210,.22);
+  border-radius:9px;
+}
+.task-composer label span,.import-composer label span,.automation-log-head span{font-size:9px}
+.task-composer input,.import-composer input{font-size:11px;background:#0a1725}
+.task-composer>button,.import-composer>button{font-size:10px}
+
+@media(max-width:760px){
+  .workspace{padding:22px 14px}
+  .home-head h2{font-size:30px}
+  .intro h2{font-size:27px}
+  .nav-item{min-height:50px}
+}
