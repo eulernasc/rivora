@@ -98,6 +98,11 @@ function App(){
     localStorage.setItem('rivora.tasks',JSON.stringify(next))
     return next
   })
+  const addTask=(title:string,meta:string,due:string)=>setTasks(current=>{
+    const next=[...current,{id:Math.max(0,...current.map(t=>t.id))+1,title,meta,done:false,due}]
+    localStorage.setItem('rivora.tasks',JSON.stringify(next))
+    return next
+  })
   return <div className="app-shell">
     <aside className="sidebar">
       <div className="brand"><div className="brand-icon-wrap"><img src={`${import.meta.env.BASE_URL}rivora-mark.svg`} className="brand-mark" alt=""/><i className="brand-scan"/></div><div><strong>RIVORA</strong><span>Operation Automation System</span></div></div>
@@ -136,7 +141,7 @@ function App(){
       <section className="workspace">
         {page==='Visão geral'&&<Overview today={today} tasks={tasks} setPage={setPage}/>}
         {page==='Fechamentos'&&<ClosuresPage/>}
-        {page==='Tarefas'&&<TasksPage tasks={tasks} toggleTask={toggleTask}/>}
+        {page==='Tarefas'&&<TasksPage tasks={tasks} toggleTask={toggleTask} addTask={addTask}/>} 
         {page==='Automações'&&<AutomationsPage/>}
         {page==='Importações'&&<ImportsPage/>}
         {page==='Retornos'&&<ReturnsPage/>}
@@ -263,7 +268,35 @@ function ClosuresPage(){
     {selected&&<Drawer item={selected} close={()=>setSelected(null)}/>}
   </PageIntro>
 }
-function TasksPage({tasks,toggleTask}:{tasks:Task[];toggleTask:(id:number)=>void}){return <PageIntro eyebrow="TAREFAS" title="Próximas ações" text="Fila operacional local. A integração com Todoist entra na próxima etapa."><div className="task-list">{tasks.map(t=><button key={t.id} className={t.done?'task done':'task'} onClick={()=>toggleTask(t.id)}>{t.done?<CheckCircle2 size={19}/>:<Clock3 size={19}/>}<div><b>{t.title}</b><span>{t.meta}</span></div><strong>{t.due}</strong></button>)}</div></PageIntro>}
+function TasksPage({tasks,toggleTask,addTask}:{tasks:Task[];toggleTask:(id:number)=>void;addTask:(title:string,meta:string,due:string)=>void}){
+  const [filter,setFilter]=useState<'Abertas'|'Todas'|'Concluídas'>('Abertas')
+  const [creating,setCreating]=useState(false)
+  const [title,setTitle]=useState('')
+  const [due,setDue]=useState('Sem prazo')
+  const visible=tasks.filter(task=>filter==='Todas'||(filter==='Abertas'?!task.done:task.done))
+  const submit=()=>{
+    const clean=title.trim()
+    if(!clean) return
+    addTask(clean,'Criada no RIVORA',due)
+    setTitle('')
+    setDue('Sem prazo')
+    setCreating(false)
+  }
+  return <PageIntro eyebrow="TAREFAS" title="Próximas ações" text="Fila operacional local. A integração com Todoist entra na próxima etapa.">
+    <div className="task-toolbar">
+      <div>{(['Abertas','Todas','Concluídas'] as const).map(item=><button key={item} className={filter===item?'chip active':'chip'} onClick={()=>setFilter(item)}>{item}</button>)}</div>
+      <button className="task-new" onClick={()=>setCreating(v=>!v)}>{creating?'Cancelar':'+ Nova tarefa'}</button>
+    </div>
+    {creating&&<div className="task-composer">
+      <label><span>TAREFA</span><input value={title} onChange={e=>setTitle(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')submit()}} placeholder="O que precisa ser feito?" autoFocus/></label>
+      <label><span>PRAZO</span><input value={due} onChange={e=>setDue(e.target.value)} placeholder="Ex.: 05/10"/></label>
+      <button onClick={submit}>Adicionar</button>
+    </div>}
+    <div className="task-list">
+      {visible.length?visible.map(t=><button key={t.id} className={t.done?'task done':'task'} onClick={()=>toggleTask(t.id)}>{t.done?<CheckCircle2 size={19}/>:<Clock3 size={19}/>}<div><b>{t.title}</b><span>{t.meta}</span></div><strong>{t.due}</strong></button>):<div className="task-empty">Nenhuma tarefa neste filtro.</div>}
+    </div>
+  </PageIntro>
+}
 function AutomationsPage(){
   const [running,setRunning]=useState<string|null>(null)
   const test=(name:string)=>{setRunning(name);window.setTimeout(()=>setRunning(null),1000)}
