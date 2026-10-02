@@ -863,3 +863,87 @@ body{
     box-shadow:none;
   }
 }
+
+/* Sidebar unified surface — remove detached-column feeling */
+:root{
+  --app-plane:#0b1928;
+  --app-plane-deep:#091522;
+}
+
+html,body,#root{
+  background:var(--app-plane);
+}
+
+.app-shell{
+  background:var(--app-plane)!important;
+}
+
+.sidebar{
+  background:var(--app-plane)!important;
+  border-right:0!important;
+  box-shadow:none!important;
+}
+
+.main{
+  background:var(--app-plane)!important;
+}
+
+.topbar{
+  background:var(--app-plane)!important;
+  border-bottom:1px solid rgba(135,176,210,.14)!important;
+  box-shadow:none!important;
+}
+
+.topbar:after{
+  display:none!important;
+}
+
+.workspace{
+  background:var(--app-plane)!important;
+}
+
+.brand{
+  border-bottom:1px solid rgba(135,176,210,.08)!important;
+}
+
+.nav-item{
+  border:0!important;
+  background:transparent!important;
+}
+
+.nav-item:hover{
+  background:rgba(255,255,255,.025)!important;
+}
+
+.nav-item.active{
+  background:linear-gradient(90deg,rgba(35,167,230,.17),rgba(35,167,230,.055))!important;
+  box-shadow:inset 3px 0 0 #38c6f2!important;
+}
+
+.side-foot{
+  border-top:1px solid rgba(135,176,210,.08)!important;
+}
+
+.mode-card{
+  background:transparent!important;
+}
+
+.sidebar:after{
+  content:'';
+  position:absolute;
+  top:96px;
+  right:0;
+  bottom:74px;
+  width:1px;
+  background:linear-gradient(180deg,transparent,rgba(111,162,198,.10) 12%,rgba(111,162,198,.10) 88%,transparent);
+  pointer-events:none;
+}
+
+@media(max-width:760px){
+  .sidebar{
+    background:var(--app-plane)!important;
+  }
+  .sidebar:after{
+    display:none;
+  }
+}
