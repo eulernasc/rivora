@@ -80,3 +80,54 @@
   .work-item{grid-template-columns:30px 1fr 24px}
   .work-state{display:none}
 }
+
+/* RIVORA shell identity */
+body{background:
+  linear-gradient(rgba(255,255,255,.012) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(255,255,255,.012) 1px,transparent 1px),
+  #050b14;background-size:34px 34px}
+.app-shell{position:relative;isolation:isolate}
+.app-shell:before{content:'';position:fixed;z-index:-1;inset:0;background:
+  radial-gradient(circle at 18% -8%,rgba(26,157,255,.09),transparent 26rem),
+  radial-gradient(circle at 92% 12%,rgba(28,212,243,.045),transparent 24rem)}
+.sidebar{width:auto;background:linear-gradient(180deg,rgba(3,8,14,.98),rgba(4,10,17,.96));box-shadow:18px 0 50px rgba(0,0,0,.12)}
+.brand{position:relative;margin:0 2px 20px;padding:2px 8px 20px;border-bottom:1px solid rgba(112,147,185,.09)}
+.brand-icon-wrap{position:relative;width:44px;height:44px;display:grid;place-items:center;overflow:hidden}
+.brand-icon-wrap:after{content:'';position:absolute;inset:0;border:1px solid rgba(70,190,255,.16);pointer-events:none}
+.brand-scan{position:absolute;left:4px;right:4px;height:1px;top:9px;background:linear-gradient(90deg,transparent,#5ce7ff,transparent);box-shadow:0 0 10px rgba(92,231,255,.48);animation:rivora-scan 4.8s linear infinite}
+@keyframes rivora-scan{0%{transform:translateY(0);opacity:0}10%{opacity:.85}85%{opacity:.55}100%{transform:translateY(25px);opacity:0}}
+.brand strong{font-family:"Segoe UI Variable Display","Segoe UI",sans-serif;font-weight:650;letter-spacing:.22em}
+.nav{position:relative}
+.nav:before{content:'';position:absolute;left:20px;top:27px;bottom:8px;width:1px;background:linear-gradient(180deg,rgba(50,137,191,.18),transparent)}
+.nav-item{position:relative;z-index:1;border-left:0}
+.nav-item svg{filter:drop-shadow(0 0 8px rgba(21,157,255,0));transition:.18s ease}
+.nav-item.active svg{color:#48cfff;filter:drop-shadow(0 0 8px rgba(21,157,255,.18))}
+.nav-item.active:before{content:'';position:absolute;left:17px;width:6px;height:6px;border-radius:50%;background:#1ccff1;box-shadow:0 0 0 4px #07121e,0 0 14px rgba(28,207,241,.55)}
+.nav-item.active{background:linear-gradient(90deg,rgba(14,92,148,.11),rgba(7,21,34,.04));color:#eef8ff}
+.nav-item:not(.active){background:transparent}
+.mode-card{background:linear-gradient(180deg,#08121f,#07101a);border-color:rgba(61,115,158,.16)}
+.topbar{position:sticky;top:0;z-index:15;background:rgba(5,11,20,.86);box-shadow:0 12px 32px rgba(0,0,0,.08)}
+.topbar:after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent 0,rgba(24,176,229,.25) 22%,rgba(112,147,185,.08) 50%,transparent 100%)}
+.page-title>div{display:flex;align-items:center;gap:8px}
+.page-title h1{font-weight:580}
+.runtime-dot{width:5px;height:5px;border-radius:50%;background:#2ed39c;box-shadow:0 0 9px rgba(46,211,156,.6)}
+.search-box{border-color:rgba(80,124,162,.16);background:linear-gradient(180deg,rgba(6,15,26,.88),rgba(5,12,21,.88))}
+.search-box:focus-within{border-color:rgba(28,212,243,.32);box-shadow:0 0 0 1px rgba(28,212,243,.05),0 0 24px rgba(28,212,243,.035)}
+.install-button,.icon-button{background:linear-gradient(180deg,#091523,#07111d);border-color:rgba(80,124,162,.16)}
+.user-chip>span{position:relative;overflow:hidden}
+.user-chip>span:after{content:'';position:absolute;inset:auto -30% -55% 20%;height:80%;background:linear-gradient(135deg,transparent,rgba(121,224,255,.2));transform:rotate(-14deg)}
+.workspace{position:relative}
+.workspace:before{content:'';position:absolute;top:0;left:30px;width:88px;height:1px;background:linear-gradient(90deg,#1aaef1,transparent)}
+.panel,.operations-main,.operations-side,.automation-console,.metric,.return-card,.analysis-card,.task,.automation-row,.history-row{box-shadow:inset 0 1px rgba(255,255,255,.01),0 14px 36px rgba(0,0,0,.05)}
+.panel,.operations-main,.operations-side,.automation-console{background:
+  linear-gradient(180deg,rgba(10,20,33,.92),rgba(6,13,22,.96))}
+.intro{padding-left:14px;border-left:1px solid rgba(28,212,243,.2)}
+.intro>span{color:#6286a5}
+.intro h2{font-weight:560}
+.table-row:not(.table-head):hover,.task:hover,.automation-row:hover,.history-row:hover{background:linear-gradient(90deg,rgba(21,157,255,.035),transparent)}
+.primary{background:linear-gradient(90deg,#0b78c6,#13b8d3);box-shadow:0 10px 24px rgba(5,121,188,.14)}
+@media(max-width:760px){
+  body{background-size:26px 26px}
+  .sidebar{box-shadow:0 -14px 34px rgba(0,0,0,.22)}
+  .workspace:before{left:13px}
+}
