@@ -19,7 +19,7 @@ export default defineConfig({
         theme_color: '#050b14',
         background_color: '#050b14',
         display: 'standalone',
-        display_override: ['window-controls-overlay', 'standalone'],
+        display_override: ['standalone'],
         start_url: '/rivora/',
         scope: '/rivora/',
         categories: ['productivity', 'business'],
