@@ -6,7 +6,6 @@ import {
   SlidersHorizontal, Workflow, XCircle,
 } from 'lucide-react'
 import './App.css'
-import { connectM365, isM365Configured, readOperationControlCloud, writeOperationControlCloud } from './m365Sync'
 
 type Page = 'Visão geral' | 'Relatórios' | 'Tarefas' | 'Automações' | 'Fechamentos e Importações' | 'Retornos' | 'Análises' | 'Histórico'
 type Task = { id:number; title:string; meta:string; done:boolean; due:string }
@@ -17,8 +16,8 @@ const NAV_ITEMS:Array<[Page, typeof LayoutDashboard]> = [
   ['Automações',Workflow],['Fechamentos e Importações',Archive],['Retornos',Inbox],['Análises',Gauge],['Histórico',History],
 ]
 const TASK_SEED:Task[] = [
-  {id:1,title:'Aguardar retorno corrigido — Juatuba',meta:'Mariana ou Leonardo',done:false,due:'Aguardando'},
-  {id:2,title:'Aguardar retorno corrigido — Jundiaí',meta:'Mariana ou Leonardo',done:false,due:'Aguardando'},
+  {id:1,title:'Aguardar retorno corrigido — Juatuba',meta:'Retorno operacional',done:false,due:'Aguardando'},
+  {id:2,title:'Aguardar retorno corrigido — Jundiaí',meta:'Retorno operacional',done:false,due:'Aguardando'},
   {id:3,title:'Subir Juatuba para Ticket',meta:'Após retorno corrigido',done:false,due:'05/10'},
   {id:4,title:'Subir Jundiaí para Ticket',meta:'Após retorno corrigido',done:false,due:'05/10'},
 ]
@@ -117,7 +116,7 @@ function App(){
           <label className="search-box"><Search size={16}/><input id="rivora-global-search" value={query} onFocus={()=>setSearchOpen(true)} onChange={e=>{setQuery(e.target.value);setSearchOpen(true)}} onKeyDown={e=>{if(e.key==='Enter'&&searchResults[0])navigateFromSearch(searchResults[0].page)}} placeholder="Buscar no Rivora"/><kbd>CTRL K</kbd></label>
           <button className="install-button" onClick={installApp}><Download size={15}/>Instalar</button>
           <button className={notificationsOpen?'icon-button active':'icon-button'} aria-label="Notificações" onClick={()=>{setNotificationsOpen(v=>!v);setSearchOpen(false)}}><Bell size={18}/><i className="notification-dot"/></button>
-          <div className="user-chip"><span>EN</span><div><strong>Euler Nascimento</strong><small>Administrador</small></div></div>
+          <div className="user-chip"><span>RV</span><div><strong>Usuário local</strong><small>Administrador</small></div></div>
         </div>
       </header>
       {searchOpen&&<div className="search-popover">
@@ -159,7 +158,7 @@ function Overview({today,tasks,setPage}:{today:string;tasks:Task[];setPage:(p:Pa
     <section className="dash-hero">
       <div className="dash-hero-copy">
         <p><CalendarDays size={15}/>{today}</p>
-        <h2>Olá, <em>Euler</em></h2>
+        <h2>Olá</h2>
         <span>Aqui está o panorama da operação e o que precisa da sua atenção hoje.</span>
       </div>
       <button className="system-status-card" onClick={()=>setPage('Automações')}>
@@ -270,7 +269,7 @@ function ClosuresPage(){
     {showSummary&&<div className="closure-summary">
       <span><b>Juatuba</b> • 464 registros • retorno pendente</span>
       <span><b>Jundiaí</b> • 53 registros • retorno pendente</span>
-      <small>Os dados ainda são locais; a sincronização com Outlook e SharePoint entra quando conectarmos as APIs corporativas.</small>
+      <small>Os dados ainda são locais; a sincronização externa será habilitada somente por uma integração autorizada.</small>
     </div>}
     <section className="panel table-panel">
       <div className="table-row table-head"><span>Operação</span><span>Período</span><span>Registros</span><span>Status</span><span>Próxima ação</span><span/></div>
@@ -353,29 +352,26 @@ function ImportsPage(){
     key:string
     operation:string
     fleetType:string
-    responsible:string
     closureStatus:ClosureStatus
     importDecision:ImportDecision
     importStatus:ImportStatus
     confirmedAt:string|null
     source:string
   }
-  type SyncStatus='local'|'ready'|'connecting'|'synced'|'error'
-
   const initial:OperationControl[]=[
-    {key:'aracruz-frota-pesada',operation:'Aracruz',fleetType:'Frota Pesada',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
-    {key:'aracruz-maquinas',operation:'Aracruz',fleetType:'Máquinas',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
-    {key:'cenibra-frota-pesada',operation:'Cenibra',fleetType:'Frota Pesada',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
-    {key:'cenibra-maquinas',operation:'Cenibra',fleetType:'Máquinas',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
-    {key:'costa-rica-frota-pesada',operation:'Costa Rica',fleetType:'Frota Pesada',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
-    {key:'costa-rica-frota-leve',operation:'Costa Rica',fleetType:'Frota Leve',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
-    {key:'alto-taquari-frota-pesada',operation:'Alto Taquari',fleetType:'Frota Pesada',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
-    {key:'alto-taquari-frota-leve',operation:'Alto Taquari',fleetType:'Frota Leve',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
-    {key:'ribas-frota-pesada',operation:'Ribas',fleetType:'Frota Pesada',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
-    {key:'ribas-maquinas',operation:'Ribas',fleetType:'Máquinas',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
-    {key:'bracell-frota-pesada',operation:'Bracell',fleetType:'Frota Pesada',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
-    {key:'jundiai-frota-pesada',operation:'Jundiaí',fleetType:'Frota Pesada',responsible:'Euler',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Fluxo Juatuba/Jundiaí'},
-    {key:'juatuba-frota-pesada',operation:'Juatuba',fleetType:'Frota Pesada',responsible:'Euler',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Fluxo Juatuba/Jundiaí'},
+    {key:'aracruz-frota-pesada',operation:'Aracruz',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
+    {key:'aracruz-maquinas',operation:'Aracruz',fleetType:'Máquinas',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
+    {key:'cenibra-frota-pesada',operation:'Cenibra',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
+    {key:'cenibra-maquinas',operation:'Cenibra',fleetType:'Máquinas',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
+    {key:'costa-rica-frota-pesada',operation:'Costa Rica',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
+    {key:'costa-rica-frota-leve',operation:'Costa Rica',fleetType:'Frota Leve',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
+    {key:'alto-taquari-frota-pesada',operation:'Alto Taquari',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
+    {key:'alto-taquari-frota-leve',operation:'Alto Taquari',fleetType:'Frota Leve',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
+    {key:'ribas-frota-pesada',operation:'Ribas',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
+    {key:'ribas-maquinas',operation:'Ribas',fleetType:'Máquinas',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
+    {key:'bracell-frota-pesada',operation:'Bracell',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
+    {key:'jundiai-frota-pesada',operation:'Jundiaí',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Fluxo operacional'},
+    {key:'juatuba-frota-pesada',operation:'Juatuba',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Fluxo operacional'},
   ]
 
   const thirdBusinessDayDeadline=useMemo(()=>{
@@ -403,104 +399,11 @@ function ImportsPage(){
     }))
   })
   const [expanded,setExpanded]=useState<string|null>('Juatuba')
-  const [cloudConfigured,setCloudConfigured]=useState(false)
-  const [cloudConnected,setCloudConnected]=useState(false)
-  const [syncStatus,setSyncStatus]=useState<SyncStatus>('local')
-  const [syncMessage,setSyncMessage]=useState('Usando dados locais neste navegador.')
-
-  const cloudDocument=(next:OperationControl[])=>({
-    version:3,
-    updatedAt:new Date().toISOString(),
-    deadlinePolicy:{
-      closureConfirmation:'after-third-business-day',
-      businessDayRule:'monday-friday',
-      automaticLateStatus:true,
-      note:'Feriados ainda não são descontados automaticamente nesta etapa.',
-    },
-    operations:next.map(item=>({
-      key:item.key,
-      operation:item.operation,
-      fleetType:item.fleetType,
-      responsible:item.responsible,
-      closureStatus:item.closureStatus,
-      importDecision:item.importDecision,
-      importStatus:item.importStatus,
-      confirmedAt:item.confirmedAt,
-      source:item.source,
-    })),
-  })
-
-  const pushCloud=async(next:OperationControl[])=>{
-    try{
-      setSyncStatus('connecting')
-      setSyncMessage('Salvando alterações no SharePoint...')
-      await writeOperationControlCloud(cloudDocument(next))
-      setSyncStatus('synced')
-      setSyncMessage('SharePoint atualizado agora.')
-    }catch(error){
-      setSyncStatus('error')
-      setSyncMessage(error instanceof Error?error.message:'Falha ao sincronizar com o SharePoint.')
-    }
-  }
 
   const persist=(next:OperationControl[])=>{
     setItems(next)
     localStorage.setItem('rivora.operationControl',JSON.stringify(next))
-    if(cloudConnected) void pushCloud(next)
   }
-
-  const mergeCloudItems=(cloudOperations:unknown[])=>{
-    const byKey=new Map<string,Partial<OperationControl>>()
-    for(const raw of cloudOperations){
-      if(!raw||typeof raw!=='object') continue
-      const candidate=raw as Partial<OperationControl>
-      if(typeof candidate.key==='string') byKey.set(candidate.key,candidate)
-    }
-    return initial.map(base=>{
-      const remote=byKey.get(base.key)
-      return remote?{...base,...remote,source:remote.source??base.source,confirmedAt:remote.confirmedAt??null}:base
-    })
-  }
-
-  const connectAndLoad=async()=>{
-    if(!cloudConfigured) return
-    try{
-      setSyncStatus('connecting')
-      setSyncMessage(cloudConnected?'Atualizando dados do SharePoint...':'Entrando com sua conta Microsoft...')
-      if(!cloudConnected) await connectM365()
-      const document=await readOperationControlCloud()
-      const next=mergeCloudItems(Array.isArray(document.operations)?document.operations:[])
-      setItems(next)
-      localStorage.setItem('rivora.operationControl',JSON.stringify(next))
-      setCloudConnected(true)
-      setSyncStatus('synced')
-      setSyncMessage('Dados carregados do SharePoint.')
-    }catch(error){
-      setSyncStatus('error')
-      setSyncMessage(error instanceof Error?error.message:'Não foi possível conectar ao Microsoft 365.')
-    }
-  }
-
-  useEffect(()=>{
-    let active=true
-    void isM365Configured().then(configured=>{
-      if(!active) return
-      setCloudConfigured(configured)
-      if(configured){
-        setSyncStatus('ready')
-        setSyncMessage('Microsoft 365 configurado. Conecte sua conta para sincronizar.')
-      }else{
-        setSyncStatus('local')
-        setSyncMessage('Integração preparada; falta registrar o aplicativo Microsoft Entra.')
-      }
-    }).catch(()=>{
-      if(active){
-        setSyncStatus('error')
-        setSyncMessage('Não foi possível carregar a configuração do Microsoft 365.')
-      }
-    })
-    return()=>{active=false}
-  },[])
 
   useEffect(()=>{
     if(!deadlinePassed) return
@@ -513,13 +416,10 @@ function ImportsPage(){
         }
         return item
       })
-      if(changed){
-        localStorage.setItem('rivora.operationControl',JSON.stringify(next))
-        if(cloudConnected) void pushCloud(next)
-      }
+      if(changed) localStorage.setItem('rivora.operationControl',JSON.stringify(next))
       return changed?next:current
     })
-  },[deadlinePassed,cloudConnected])
+  },[deadlinePassed])
 
   const toggleClosure=(item:OperationControl)=>{
     const nextStatus:ClosureStatus=item.closureStatus==='Confirmado'?(deadlinePassed?'Atrasado':'Aguardando confirmação'):'Confirmado'
@@ -570,13 +470,10 @@ function ImportsPage(){
       <div><span>OPERAÇÕES</span><b>{operations.length}</b><small>{items.length} frentes de controle</small></div>
       <div><span>FECHAMENTOS CONFIRMADOS</span><b>{confirmed}</b><small>{overdue>0?overdue+' atrasados • ':''}{awaiting} aguardando confirmação</small></div>
       <div><span>VÃO IMPORTAR</span><b>{willImport}</b><small>{importPending} importações pendentes</small></div>
-      <div className={'sync-card '+syncStatus}>
-        <span>MICROSOFT 365</span>
-        <b>{syncStatus==='synced'?'Sincronizado':syncStatus==='connecting'?'Sincronizando...':syncStatus==='error'?'Atenção':cloudConfigured?'Pronto para conectar':'Configuração pendente'}</b>
-        <small>{syncMessage}</small>
-        <button className="sync-action" onClick={connectAndLoad} disabled={!cloudConfigured||syncStatus==='connecting'}>
-          {syncStatus==='synced'?'Atualizar do SharePoint':cloudConfigured?'Conectar Microsoft 365':'Aguardando App ID'}
-        </button>
+      <div className="sync-card local">
+        <span>DADOS</span>
+        <b>Modo local protegido</b>
+        <small>A fonte central será conectada somente por integração autorizada e com dados mínimos.</small>
       </div>
     </div>
 
@@ -612,7 +509,7 @@ function ImportsPage(){
             {rows.map(item=><article className="fleet-control-row" key={item.key}>
               <div className="fleet-main">
                 <span className="fleet-icon"><Archive size={17}/></span>
-                <div><b>{item.fleetType}</b><small>{item.responsible==='Euler'?'Responsável: Euler':'Responsável: operação'} • {item.source}</small></div>
+                <div><b>{item.fleetType}</b><small>{item.source}</small></div>
               </div>
 
               <div className="control-group">
@@ -674,7 +571,7 @@ function ReturnsPage({setPage}:{setPage:(p:Page)=>void}){
       {states.map(item=><article className={item.received?'return-card received':'return-card'} key={item.op}>
         <div><Inbox size={19}/><Pill tone={item.received?'green':'amber'}>{item.received?'Recebido local':'Aguardando resposta'}</Pill></div>
         <h3>{item.op}</h3>
-        <p>Mariana Tourino Ribeiro • Leonardo Luis Leite</p>
+        <p>Responsáveis mantidos no ambiente corporativo</p>
         <span className="return-updated">{item.updated}</span>
         <div className="return-actions">
           <button onClick={()=>toggle(item.op)}>{item.received?'Reabrir acompanhamento':'Marcar recebido local'}</button>
