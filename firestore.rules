@@ -113,8 +113,8 @@ service cloud.firestore {
       // Collection listeners are list operations. Firestore rules are not filters,
       // so the list rule cannot depend on each possible document ID matching F01..F13.
       // Access remains restricted to authenticated authorized users and a valid cycle.
-      allow list: if authorized() && validCycle(cycle);
-      allow get: if authorized() && validCycle(cycle) && validFront(frontId);
+      allow list: if roleIs('admin') && validCycle(cycle);
+      allow get: if roleIs('admin') && validCycle(cycle) && validFront(frontId);
 
       allow create: if validCycle(cycle)
         && validFront(frontId)
