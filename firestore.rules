@@ -1,0 +1,136 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userPath() {
+      return /databases/$(database)/documents/authorizedUsers/$(request.auth.uid);
+    }
+
+    function authorized() {
+      return signedIn() && exists(userPath());
+    }
+
+    function roleIs(role) {
+      return authorized() && get(userPath()).data.role == role;
+    }
+
+    function validCycle(cycle) {
+      return cycle.matches('^[0-9]{4}-(0[1-9]|1[0-2])$');
+    }
+
+    function validFront(frontId) {
+      return frontId.matches('^F(0[1-9]|1[0-3])$');
+    }
+
+    function validClosureStatus(value) {
+      return value in ['Aguardando confirmação', 'Confirmado', 'Atrasado'];
+    }
+
+    function validImportDecision(value) {
+      return value in ['Pendente', 'Realiza importação', 'Não realiza importação'];
+    }
+
+    function validImportStatus(value) {
+      return value in ['Não iniciada', 'Em andamento', 'Concluída', 'Não se aplica'];
+    }
+
+    function validSource(value) {
+      return value in ['manual', 'migration', 'power_automate'];
+    }
+
+    function validOptionalConfirmedAt() {
+      return !('confirmedAt' in request.resource.data)
+        || request.resource.data.confirmedAt == null
+        || request.resource.data.confirmedAt is timestamp;
+    }
+
+    function validFrontDocument() {
+      return request.resource.data.keys().hasOnly([
+          'closureStatus',
+          'importDecision',
+          'importStatus',
+          'confirmedAt',
+          'source',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'closureStatus',
+          'importDecision',
+          'importStatus',
+          'source',
+          'updatedAt'
+        ])
+        && validClosureStatus(request.resource.data.closureStatus)
+        && validImportDecision(request.resource.data.importDecision)
+        && validImportStatus(request.resource.data.importStatus)
+        && validSource(request.resource.data.source)
+        && validOptionalConfirmedAt()
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function validBridgeCreate() {
+      return request.resource.data.keys().hasOnly([
+          'closureStatus',
+          'confirmedAt',
+          'source',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'closureStatus',
+          'confirmedAt',
+          'source',
+          'updatedAt'
+        ])
+        && request.resource.data.closureStatus == 'Confirmado'
+        && request.resource.data.source == 'power_automate'
+        && request.resource.data.confirmedAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function validBridgeUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'closureStatus',
+          'confirmedAt',
+          'source',
+          'updatedAt'
+        ])
+        && request.resource.data.closureStatus == 'Confirmado'
+        && request.resource.data.source == 'power_automate'
+        && request.resource.data.confirmedAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    match /authorizedUsers/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /closingCycles/{cycle}/fronts/{frontId} {
+      allow read: if authorized() && validCycle(cycle) && validFront(frontId);
+
+      allow create: if validCycle(cycle)
+        && validFront(frontId)
+        && (
+          (roleIs('admin') && validFrontDocument())
+          || (roleIs('bridge') && validBridgeCreate())
+        );
+
+      allow update: if validCycle(cycle)
+        && validFront(frontId)
+        && (
+          (roleIs('admin') && validFrontDocument())
+          || (roleIs('bridge') && validBridgeUpdate())
+        );
+
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
