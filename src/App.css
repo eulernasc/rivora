@@ -1529,3 +1529,84 @@ body{
   .deadline-note{align-items:flex-start;padding:10px 12px;line-height:1.45}
   .deadline-note svg{margin-top:1px}
 }
+
+
+/* Firebase authentication */
+.auth-shell{
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  padding:24px;
+  background:
+    radial-gradient(circle at 18% 18%,rgba(40,169,255,.10),transparent 22rem),
+    linear-gradient(180deg,#07121d,#040b12);
+}
+.auth-card{
+  width:min(420px,94vw);
+  display:grid;
+  gap:18px;
+  padding:28px;
+  border:1px solid rgba(135,176,210,.20);
+  border-radius:16px;
+  background:linear-gradient(160deg,#0d1d2f,#091624);
+  box-shadow:0 24px 70px rgba(0,0,0,.32);
+}
+.auth-loading{justify-items:center;text-align:center}
+.auth-loading img{width:54px;height:54px}
+.auth-loading b{color:#d9e9f5}
+.auth-brand{display:flex;align-items:center;gap:12px}
+.auth-brand img{width:42px;height:42px}
+.auth-brand strong,.auth-brand span{display:block}
+.auth-brand strong{font-size:18px;letter-spacing:.08em}
+.auth-brand span{margin-top:3px;color:#7893a9;font-size:9px;letter-spacing:.10em}
+.auth-copy>span{color:#5dcaff;font-size:9px;letter-spacing:.14em}
+.auth-copy h1{margin:8px 0 7px;font-size:28px;letter-spacing:-.04em}
+.auth-copy p{color:#8ea5b8;font-size:11px;line-height:1.55}
+.auth-card label{display:grid;gap:7px}
+.auth-card label>span{color:#8ba2b6;font-size:9px;letter-spacing:.12em}
+.auth-card input{
+  height:42px;
+  padding:0 12px;
+  border:1px solid rgba(135,176,210,.20);
+  border-radius:8px;
+  outline:none;
+  background:#071522;
+  color:#e6f1f8;
+}
+.auth-card input:focus{border-color:rgba(66,190,244,.48);box-shadow:0 0 0 3px rgba(40,169,255,.08)}
+.auth-card>button{
+  height:42px;
+  border:1px solid rgba(67,189,240,.28);
+  border-radius:8px;
+  background:linear-gradient(145deg,#159fe5,#0a76c9);
+  color:white;
+  font-weight:700;
+  cursor:pointer;
+}
+.auth-card>button:disabled{opacity:.6;cursor:wait}
+.auth-card>small{color:#6f879b;font-size:9.5px;line-height:1.5;text-align:center}
+.auth-error{
+  padding:9px 10px;
+  border:1px solid rgba(255,98,98,.22);
+  border-radius:8px;
+  background:#301b20;
+  color:#ffaaaa;
+  font-size:10px;
+}
+.logout-button{
+  width:36px;
+  height:36px;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(135,176,210,.18);
+  border-radius:9px;
+  background:#0d1d2d;
+  color:#8facbf;
+  cursor:pointer;
+}
+.logout-button:hover{border-color:rgba(80,187,235,.30);color:#d5f1ff}
+.sync-card.synced:after{background:linear-gradient(90deg,#31d4a2,transparent 72%)}
+.sync-card.migrating:after,.sync-card.connecting:after{background:linear-gradient(90deg,#36d8ee,transparent 72%)}
+.sync-card.error:after{background:linear-gradient(90deg,#ff6262,transparent 72%)}
+.sync-card.synced b{color:#74e5be}
+.sync-card.error b{color:#ff9c9c}
