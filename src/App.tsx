@@ -393,7 +393,7 @@ function ImportsPage(){
   const [items,setItems]=useState<OperationControl[]>(()=>{
     const saved=localStorage.getItem('rivora.operationControl')
     if(!saved) return initial
-    const parsed=JSON.parse(saved) as Array<OperationControl & {importDecision:ImportDecision|'Sim'|'Não'}>
+    const parsed=JSON.parse(saved) as Array<Omit<OperationControl,'importDecision'> & {importDecision:ImportDecision|'Sim'|'Não'}>
     return parsed.map(item=>({
       ...item,
       importDecision:item.importDecision==='Sim'?'Realiza importação':item.importDecision==='Não'?'Não realiza importação':item.importDecision,
