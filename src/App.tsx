@@ -447,11 +447,11 @@ function ImportsPage(){
   },[])
   const cycleCollection=useMemo(()=>collection(db,'closingCycles',currentCycle,'fronts'),[currentCycle])
 
-  const localSeed=()=>{
+  const localSeed=():OperationControl[]=>{
     const saved=localStorage.getItem('rivora.operationControl')
     if(!saved) return initial
     try{
-      const parsed=JSON.parse(saved) as Array<Partial<OperationControl> & {importDecision?:ImportDecision|'Sim'|'Não'}>
+      const parsed=JSON.parse(saved) as Array<Omit<Partial<OperationControl>,'importDecision'|'source'> & {importDecision?:ImportDecision|'Sim'|'Não';source?:string}>
       return initial.map(base=>{
         const previous=parsed.find(row=>row.key===base.key||(row.operation===base.operation&&row.fleetType===base.fleetType))
         if(!previous) return base
@@ -462,7 +462,7 @@ function ImportsPage(){
           importDecision:(decision??base.importDecision) as ImportDecision,
           importStatus:(previous.importDecision==='Não'?'Não se aplica':previous.importStatus??base.importStatus) as ImportStatus,
           confirmedAt:typeof previous.confirmedAt==='string'?previous.confirmedAt:null,
-          source:previous.source==='power_automate'?'power_automate':previous.source==='migration'?'migration':'manual',
+          source:(previous.source==='power_automate'?'power_automate':previous.source==='migration'?'migration':'manual') as CloudSource,
         }
       })
     }catch{
@@ -525,7 +525,7 @@ function ImportsPage(){
         if(!data) return base
         const rawConfirmed=data.confirmedAt as {toDate?:()=>Date}|null|undefined
         const confirmedAt=rawConfirmed&&typeof rawConfirmed.toDate==='function'?rawConfirmed.toDate().toISOString():null
-        const source=data.source==='power_automate'?'power_automate':data.source==='migration'?'migration':'manual'
+        const source:CloudSource=data.source==='power_automate'?'power_automate':data.source==='migration'?'migration':'manual'
         return {
           ...base,
           closureStatus:(data.closureStatus??base.closureStatus) as ClosureStatus,
