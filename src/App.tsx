@@ -7,13 +7,13 @@ import {
 } from 'lucide-react'
 import './App.css'
 
-type Page = 'Visão geral' | 'Fechamentos' | 'Tarefas' | 'Automações' | 'Importações' | 'Retornos' | 'Análises' | 'Histórico'
+type Page = 'Visão geral' | 'Relatórios' | 'Tarefas' | 'Automações' | 'Fechamentos e Importações' | 'Retornos' | 'Análises' | 'Histórico'
 type Task = { id:number; title:string; meta:string; done:boolean; due:string }
 type Closure = { op:string; period:string; records:number; status:string; next:string }
 
 const NAV_ITEMS:Array<[Page, typeof LayoutDashboard]> = [
-  ['Visão geral',LayoutDashboard],['Fechamentos',FileSpreadsheet],['Tarefas',ListTodo],
-  ['Automações',Workflow],['Importações',Archive],['Retornos',Inbox],['Análises',Gauge],['Histórico',History],
+  ['Visão geral',LayoutDashboard],['Relatórios',FileSpreadsheet],['Tarefas',ListTodo],
+  ['Automações',Workflow],['Fechamentos e Importações',Archive],['Retornos',Inbox],['Análises',Gauge],['Histórico',History],
 ]
 const TASK_SEED:Task[] = [
   {id:1,title:'Aguardar retorno corrigido — Juatuba',meta:'Mariana ou Leonardo',done:false,due:'Aguardando'},
@@ -33,15 +33,15 @@ const AUTOMATIONS = [
 
 const SEARCH_ITEMS:Array<{label:string;detail:string;page:Page}> = [
   {label:'Visão geral',detail:'Centro de comando e estado operacional',page:'Visão geral'},
-  {label:'Fechamentos',detail:'Juatuba, Jundiaí, períodos e retornos',page:'Fechamentos'},
+  {label:'Relatórios',detail:'Juatuba, Jundiaí, períodos, envios e retornos',page:'Relatórios'},
   {label:'Tarefas',detail:'Pendências e próximas ações',page:'Tarefas'},
   {label:'Automações',detail:'Fluxos, testes e monitoramento',page:'Automações'},
-  {label:'Importações',detail:'Prazos, fontes e validações',page:'Importações'},
+  {label:'Fechamentos e Importações',detail:'Confirmações de fechamento e controle das importações por operação',page:'Fechamentos e Importações'},
   {label:'Retornos',detail:'Conversas e anexos corrigidos',page:'Retornos'},
   {label:'Análises',detail:'Indicadores, divergências e CPH',page:'Análises'},
   {label:'Histórico',detail:'Registro de ações e mudanças',page:'Histórico'},
-  {label:'Juatuba',detail:'Fechamento aguardando retorno corrigido',page:'Fechamentos'},
-  {label:'Jundiaí',detail:'Fechamento aguardando retorno corrigido',page:'Fechamentos'},
+  {label:'Juatuba',detail:'Relatório aguardando retorno corrigido',page:'Relatórios'},
+  {label:'Jundiaí',detail:'Relatório aguardando retorno corrigido',page:'Relatórios'},
 ]
 
 function App(){
@@ -140,10 +140,10 @@ function App(){
       {installMessage&&<div className="install-note"><span>{installMessage}</span><button onClick={()=>setInstallMessage('')} aria-label="Fechar"><XCircle size={16}/></button></div>}
       <section className="workspace">
         {page==='Visão geral'&&<Overview today={today} tasks={tasks} setPage={setPage}/>}
-        {page==='Fechamentos'&&<ClosuresPage/>}
+        {page==='Relatórios'&&<ClosuresPage/>}
         {page==='Tarefas'&&<TasksPage tasks={tasks} toggleTask={toggleTask} addTask={addTask}/>} 
         {page==='Automações'&&<AutomationsPage/>}
-        {page==='Importações'&&<ImportsPage/>}
+        {page==='Fechamentos e Importações'&&<ImportsPage/>}
         {page==='Retornos'&&<ReturnsPage setPage={setPage}/>} 
         {page==='Análises'&&<AnalyticsPage/>}
         {page==='Histórico'&&<HistoryPage/>}
@@ -169,7 +169,7 @@ function Overview({today,tasks,setPage}:{today:string;tasks:Task[];setPage:(p:Pa
     </section>
 
     <section className="dash-kpis">
-      <button className="dash-kpi kpi-blue" onClick={()=>setPage('Fechamentos')}>
+      <button className="dash-kpi kpi-blue" onClick={()=>setPage('Relatórios')}>
         <div className="kpi-icon"><FileSpreadsheet size={21}/></div>
         <div><span>Processos ativos</span><b>7</b><small>2 aguardando retorno</small></div>
         <ChevronRight size={17}/>
@@ -198,13 +198,13 @@ function Overview({today,tasks,setPage}:{today:string;tasks:Task[];setPage:(p:Pa
           <button onClick={()=>setPage('Tarefas')}>Abrir todas <ChevronRight size={15}/></button>
         </header>
         <div className="attention-items">
-          <button onClick={()=>setPage('Fechamentos')}>
+          <button onClick={()=>setPage('Relatórios')}>
             <i className="amber"/>
             <span className="row-icon"><FileSpreadsheet size={18}/></span>
             <div><b>Juatuba</b><small>Aguardando retorno corrigido</small></div>
             <strong>Ticket 05/10</strong><ChevronRight size={16}/>
           </button>
-          <button onClick={()=>setPage('Fechamentos')}>
+          <button onClick={()=>setPage('Relatórios')}>
             <i className="amber"/>
             <span className="row-icon"><FileSpreadsheet size={18}/></span>
             <div><b>Jundiaí</b><small>Aguardando retorno corrigido</small></div>
@@ -345,9 +345,9 @@ function AutomationsPage(){
   </PageIntro>
 }
 function ImportsPage(){
-  type ClosureStatus='Aguardando confirmação'|'Confirmado'
-  type ImportDecision='Pendente'|'Sim'|'Não'
-  type ImportStatus='Não iniciada'|'Em andamento'|'Concluída'
+  type ClosureStatus='Aguardando confirmação'|'Confirmado'|'Atrasado'
+  type ImportDecision='Pendente'|'Realiza importação'|'Não realiza importação'
+  type ImportStatus='Não iniciada'|'Em andamento'|'Concluída'|'Não se aplica'
   type OperationControl={
     key:string
     operation:string
@@ -376,48 +376,83 @@ function ImportsPage(){
     {key:'juatuba-frota-pesada',operation:'Juatuba',fleetType:'Frota Pesada',responsible:'Euler',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Fluxo Juatuba/Jundiaí'},
   ]
 
+  const thirdBusinessDayDeadline=useMemo(()=>{
+    const now=new Date()
+    let businessDays=0
+    for(let day=1;day<=10;day++){
+      const date=new Date(now.getFullYear(),now.getMonth(),day,23,59,59,999)
+      const weekday=date.getDay()
+      if(weekday!==0&&weekday!==6) businessDays++
+      if(businessDays===3) return date
+    }
+    return new Date(now.getFullYear(),now.getMonth(),3,23,59,59,999)
+  },[])
+  const deadlinePassed=Date.now()>thirdBusinessDayDeadline.getTime()
+  const deadlineLabel=thirdBusinessDayDeadline.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})
+
   const [items,setItems]=useState<OperationControl[]>(()=>{
     const saved=localStorage.getItem('rivora.operationControl')
-    return saved?JSON.parse(saved):initial
+    if(!saved) return initial
+    const parsed=JSON.parse(saved) as OperationControl[]
+    return parsed.map(item=>({
+      ...item,
+      importDecision:item.importDecision==='Sim'?'Realiza importação':item.importDecision==='Não'?'Não realiza importação':item.importDecision,
+      importStatus:item.importDecision==='Não'?'Não se aplica':item.importStatus,
+    }))
   })
   const [expanded,setExpanded]=useState<string|null>('Juatuba')
 
-  const save=(next:OperationControl[])=>{
+  const persist=(next:OperationControl[])=>{
     setItems(next)
     localStorage.setItem('rivora.operationControl',JSON.stringify(next))
   }
-  const update=(key:string,patch:Partial<OperationControl>)=>save(items.map(item=>item.key===key?{...item,...patch}:item))
-  const markClosure=(item:OperationControl)=>{
-    const confirmed=item.closureStatus!=='Confirmado'
+  const update=(key:string,patch:Partial<OperationControl>)=>persist(items.map(item=>item.key===key?{...item,...patch}:item))
+
+  useEffect(()=>{
+    if(!deadlinePassed) return
+    setItems(current=>{
+      let changed=false
+      const next=current.map(item=>{
+        if(item.closureStatus==='Aguardando confirmação'){
+          changed=true
+          return {...item,closureStatus:'Atrasado' as ClosureStatus}
+        }
+        return item
+      })
+      if(changed) localStorage.setItem('rivora.operationControl',JSON.stringify(next))
+      return changed?next:current
+    })
+  },[deadlinePassed])
+
+  const setClosureStatus=(item:OperationControl,value:ClosureStatus)=>{
+    const effective=value==='Aguardando confirmação'&&deadlinePassed?'Atrasado':value
     update(item.key,{
-      closureStatus:confirmed?'Confirmado':'Aguardando confirmação',
-      confirmedAt:confirmed?new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):null,
+      closureStatus:effective,
+      confirmedAt:effective==='Confirmado'?new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):null,
     })
   }
   const setDecision=(item:OperationControl,value:ImportDecision)=>{
-    update(item.key,{
-      importDecision:value,
-      importStatus:value==='Não'?'Não iniciada':item.importStatus,
-    })
+    const nextStatus:ImportStatus=value==='Não realiza importação'?'Não se aplica':value==='Realiza importação'&&item.importStatus==='Não se aplica'?'Não iniciada':item.importStatus
+    update(item.key,{importDecision:value,importStatus:nextStatus})
   }
-  const advanceImport=(item:OperationControl)=>{
-    if(item.importDecision!=='Sim') return
-    const next:ImportStatus=item.importStatus==='Não iniciada'?'Em andamento':item.importStatus==='Em andamento'?'Concluída':'Não iniciada'
-    update(item.key,{importStatus:next})
+  const setImportStatus=(item:OperationControl,value:ImportStatus)=>{
+    if(item.importDecision!=='Realiza importação') return
+    update(item.key,{importStatus:value})
   }
 
   const operations=Array.from(new Set(items.map(item=>item.operation)))
   const confirmed=items.filter(item=>item.closureStatus==='Confirmado').length
-  const awaiting=items.length-confirmed
-  const willImport=items.filter(item=>item.importDecision==='Sim').length
-  const importPending=items.filter(item=>item.importDecision==='Sim'&&item.importStatus!=='Concluída').length
+  const overdue=items.filter(item=>item.closureStatus==='Atrasado').length
+  const awaiting=items.length-confirmed-overdue
+  const willImport=items.filter(item=>item.importDecision==='Realiza importação').length
+  const importPending=items.filter(item=>item.importDecision==='Realiza importação'&&item.importStatus!=='Concluída').length
 
-  return <PageIntro eyebrow="IMPORTAÇÕES" title="Fechamentos e importações" text="Confirme o fechamento por operação, registre quem realizará importação e acompanhe o andamento sem repetir operações na tela.">
+  return <PageIntro eyebrow="FECHAMENTOS E IMPORTAÇÕES" title="Fechamentos e importações" text="Confirme o fechamento por operação, registre quem realizará importação e acompanhe o andamento sem repetir operações na tela.">
     <div className="operation-control-summary">
       <div><span>OPERAÇÕES</span><b>{operations.length}</b><small>{items.length} frentes de controle</small></div>
-      <div><span>FECHAMENTOS CONFIRMADOS</span><b>{confirmed}</b><small>{awaiting} aguardando confirmação</small></div>
+      <div><span>FECHAMENTOS CONFIRMADOS</span><b>{confirmed}</b><small>{overdue>0?overdue+' atrasados • ':''}{awaiting} aguardando confirmação</small></div>
       <div><span>VÃO IMPORTAR</span><b>{willImport}</b><small>{importPending} importações pendentes</small></div>
-      <div className="sync-card"><span>BASE MICROSOFT 365</span><b>Preparada</b><small>SharePoint criado • sincronização automática é a próxima etapa</small></div>
+      <div className="sync-card"><span>REGRA DE PRAZO</span><b>3º dia útil</b><small>Sem confirmação após {deadlineLabel}, o fechamento muda automaticamente para atrasado.</small></div>
     </div>
 
     <div className="operation-accordion">
@@ -425,13 +460,15 @@ function ImportsPage(){
         const rows=items.filter(item=>item.operation===operation)
         const isOpen=expanded===operation
         const done=rows.filter(item=>item.closureStatus==='Confirmado').length
-        const imports=rows.filter(item=>item.importDecision==='Sim').length
+        const late=rows.filter(item=>item.closureStatus==='Atrasado').length
+        const imports=rows.filter(item=>item.importDecision==='Realiza importação').length
         const fullyDone=rows.every(item=>item.closureStatus==='Confirmado')
         return <section className={isOpen?'operation-card open':'operation-card'} key={operation}>
           <button className="operation-head" onClick={()=>setExpanded(isOpen?null:operation)}>
-            <div className="operation-name"><span className={fullyDone?'operation-dot green':'operation-dot amber'}/><div><b>{operation}</b><small>{rows.length} {rows.length===1?'tipo':'tipos'} de frota</small></div></div>
+            <div className="operation-name"><span className={fullyDone?'operation-dot green':late?'operation-dot red':'operation-dot amber'}/><div><b>{operation}</b><small>{rows.length} {rows.length===1?'tipo':'tipos'} de frota</small></div></div>
             <div className="operation-head-stats">
               <span><strong>{done}/{rows.length}</strong> fechamentos</span>
+              {late>0&&<span className="late-stat"><strong>{late}</strong> atrasados</span>}
               <span><strong>{imports}</strong> importações</span>
             </div>
             <ChevronRight className="operation-chevron" size={18}/>
@@ -446,28 +483,42 @@ function ImportsPage(){
 
               <div className="control-group">
                 <span>FECHAMENTO</span>
-                <button className={item.closureStatus==='Confirmado'?'control-button success':'control-button warning'} onClick={()=>markClosure(item)}>
-                  {item.closureStatus==='Confirmado'?<CheckCircle2 size={14}/>:<Clock3 size={14}/>}
-                  {item.closureStatus}
-                </button>
-                {item.confirmedAt&&<small>{item.confirmedAt}</small>}
+                <div className="select-wrap">
+                  <select className={item.closureStatus==='Confirmado'?'status-select success':item.closureStatus==='Atrasado'?'status-select danger':'status-select warning'} value={item.closureStatus} onChange={e=>setClosureStatus(item,e.target.value as ClosureStatus)}>
+                    <option value="Aguardando confirmação">Aguardando confirmação</option>
+                    <option value="Confirmado">Confirmado</option>
+                    <option value="Atrasado">Atrasado</option>
+                  </select>
+                  <ChevronRight size={14}/>
+                </div>
+                <small>{item.confirmedAt?'Confirmado em '+item.confirmedAt:item.closureStatus==='Atrasado'?'Prazo excedido após o 3º dia útil ('+deadlineLabel+')':'Prazo: até o 3º dia útil ('+deadlineLabel+')'}</small>
               </div>
 
               <div className="control-group">
-                <span>REALIZA IMPORTAÇÃO?</span>
-                <div className="decision-buttons">
-                  {(['Sim','Não'] as const).map(value=><button key={value} className={item.importDecision===value?'decision active':'decision'} onClick={()=>setDecision(item,value)}>{value}</button>)}
+                <span>IMPORTAÇÃO</span>
+                <div className="select-wrap">
+                  <select className={item.importDecision==='Realiza importação'?'status-select info':item.importDecision==='Não realiza importação'?'status-select neutral':'status-select warning'} value={item.importDecision} onChange={e=>setDecision(item,e.target.value as ImportDecision)}>
+                    <option value="Pendente">Definir</option>
+                    <option value="Realiza importação">Realiza importação</option>
+                    <option value="Não realiza importação">Não realiza importação</option>
+                  </select>
+                  <ChevronRight size={14}/>
                 </div>
-                <small>{item.importDecision==='Pendente'?'Aguardando definição':item.importDecision==='Sim'?'Importação prevista':'Não haverá importação'}</small>
+                <small>{item.importDecision==='Pendente'?'Aguardando definição':item.importDecision==='Realiza importação'?'Esta frente terá importação':'Esta frente não realiza importação'}</small>
               </div>
 
               <div className="control-group import-progress">
                 <span>STATUS DA IMPORTAÇÃO</span>
-                <button className={item.importStatus==='Concluída'?'control-button success':item.importStatus==='Em andamento'?'control-button info':'control-button neutral'} onClick={()=>advanceImport(item)} disabled={item.importDecision!=='Sim'}>
-                  {item.importStatus}
-                  {item.importDecision==='Sim'&&<ChevronRight size={14}/>}
-                </button>
-                <small>{item.importDecision==='Sim'?'Clique para avançar o status':'Disponível quando marcar Sim'}</small>
+                <div className="select-wrap">
+                  <select className={item.importStatus==='Concluída'?'status-select success':item.importStatus==='Em andamento'?'status-select info':'status-select neutral'} value={item.importDecision==='Realiza importação'?item.importStatus:'Não se aplica'} onChange={e=>setImportStatus(item,e.target.value as ImportStatus)} disabled={item.importDecision!=='Realiza importação'}>
+                    <option value="Não iniciada">Não iniciada</option>
+                    <option value="Em andamento">Em andamento</option>
+                    <option value="Concluída">Concluída</option>
+                    <option value="Não se aplica">Não se aplica</option>
+                  </select>
+                  <ChevronRight size={14}/>
+                </div>
+                <small>{item.importDecision==='Realiza importação'?'Abra para escolher o status atual':item.importDecision==='Não realiza importação'?'Não se aplica a esta frente':'Defina primeiro se haverá importação'}</small>
               </div>
             </article>)}
           </div>}
@@ -504,7 +555,7 @@ function ReturnsPage({setPage}:{setPage:(p:Page)=>void}){
         <span className="return-updated">{item.updated}</span>
         <div className="return-actions">
           <button onClick={()=>toggle(item.op)}>{item.received?'Reabrir acompanhamento':'Marcar recebido local'}</button>
-          <button onClick={()=>setPage('Fechamentos')}>Abrir fechamento <ChevronRight size={14}/></button>
+          <button onClick={()=>setPage('Relatórios')}>Abrir fechamento <ChevronRight size={14}/></button>
         </div>
       </article>)}
     </div>
