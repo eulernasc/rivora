@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import {
   Archive, Bell, CalendarDays, CheckCircle2, ChevronRight,
   Clock3, Download, FileCheck2, FileSpreadsheet, Gauge,
-  History, Inbox, LayoutDashboard, ListTodo, Play, Search, Settings,
+  History, Inbox, LayoutDashboard, ListTodo, LogOut, Play, Search, Settings,
   SlidersHorizontal, Workflow, XCircle,
 } from 'lucide-react'
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
+import { collection, doc, onSnapshot, serverTimestamp, Timestamp, writeBatch } from 'firebase/firestore'
 import './App.css'
+import { auth, db } from './firebase'
 
 type Page = 'Visão geral' | 'Relatórios' | 'Tarefas' | 'Automações' | 'Fechamentos e Importações' | 'Retornos' | 'Análises' | 'Histórico'
 type Task = { id:number; title:string; meta:string; done:boolean; due:string }
@@ -45,6 +48,54 @@ const SEARCH_ITEMS:Array<{label:string;detail:string;page:Page}> = [
 ]
 
 function App(){
+  const [user,setUser]=useState<User|null>(null)
+  const [authReady,setAuthReady]=useState(false)
+
+  useEffect(()=>onAuthStateChanged(auth,nextUser=>{
+    setUser(nextUser)
+    setAuthReady(true)
+  }),[])
+
+  if(!authReady) return <div className="auth-shell"><div className="auth-card auth-loading"><img src={`${import.meta.env.BASE_URL}rivora-mark.svg`} alt=""/><b>Carregando RIVORA...</b></div></div>
+  if(!user) return <LoginPage/>
+  return <DashboardApp/>
+}
+
+function LoginPage(){
+  const [email,setEmail]=useState('')
+  const [password,setPassword]=useState('')
+  const [loading,setLoading]=useState(false)
+  const [error,setError]=useState('')
+
+  const submit=async(event:FormEvent)=>{
+    event.preventDefault()
+    if(!email.trim()||!password) return
+    setLoading(true)
+    setError('')
+    try{
+      await signInWithEmailAndPassword(auth,email.trim(),password)
+    }catch(err){
+      const code=typeof err==='object'&&err&&'code' in err?String((err as {code?:string}).code):''
+      setError(code==='auth/too-many-requests'?'Muitas tentativas. Aguarde alguns minutos e tente novamente.':'E-mail ou senha inválidos.')
+    }finally{
+      setLoading(false)
+    }
+  }
+
+  return <div className="auth-shell">
+    <form className="auth-card" onSubmit={submit}>
+      <div className="auth-brand"><img src={`${import.meta.env.BASE_URL}rivora-mark.svg`} alt=""/><div><strong>RIVORA</strong><span>Operation Automation System</span></div></div>
+      <div className="auth-copy"><span>ACESSO PROTEGIDO</span><h1>Entrar no RIVORA</h1><p>Use a conta autorizada para acessar os controles operacionais.</p></div>
+      <label><span>E-MAIL</span><input type="email" autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)} required/></label>
+      <label><span>SENHA</span><input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} required/></label>
+      {error&&<div className="auth-error">{error}</div>}
+      <button type="submit" disabled={loading}>{loading?'Entrando...':'Entrar'}</button>
+      <small>O RIVORA não exibe nem compartilha sua identidade com as confirmações operacionais.</small>
+    </form>
+  </div>
+}
+
+function DashboardApp(){
   const [page,setPage]=useState<Page>('Visão geral')
   const [query,setQuery]=useState('')
   const [searchOpen,setSearchOpen]=useState(false)
@@ -116,7 +167,8 @@ function App(){
           <label className="search-box"><Search size={16}/><input id="rivora-global-search" value={query} onFocus={()=>setSearchOpen(true)} onChange={e=>{setQuery(e.target.value);setSearchOpen(true)}} onKeyDown={e=>{if(e.key==='Enter'&&searchResults[0])navigateFromSearch(searchResults[0].page)}} placeholder="Buscar no Rivora"/><kbd>CTRL K</kbd></label>
           <button className="install-button" onClick={installApp}><Download size={15}/>Instalar</button>
           <button className={notificationsOpen?'icon-button active':'icon-button'} aria-label="Notificações" onClick={()=>{setNotificationsOpen(v=>!v);setSearchOpen(false)}}><Bell size={18}/><i className="notification-dot"/></button>
-          <div className="user-chip"><span>RV</span><div><strong>Usuário local</strong><small>Administrador</small></div></div>
+          <div className="user-chip"><span>RV</span><div><strong>Conta autenticada</strong><small>Acesso protegido</small></div></div>
+          <button className="logout-button" onClick={()=>void signOut(auth)} title="Sair"><LogOut size={16}/></button>
         </div>
       </header>
       {searchOpen&&<div className="search-popover">
@@ -348,6 +400,7 @@ function ImportsPage(){
   type ClosureStatus='Aguardando confirmação'|'Confirmado'|'Atrasado'
   type ImportDecision='Pendente'|'Realiza importação'|'Não realiza importação'
   type ImportStatus='Não iniciada'|'Em andamento'|'Concluída'|'Não se aplica'
+  type CloudSource='manual'|'migration'|'power_automate'
   type OperationControl={
     key:string
     operation:string
@@ -356,22 +409,23 @@ function ImportsPage(){
     importDecision:ImportDecision
     importStatus:ImportStatus
     confirmedAt:string|null
-    source:string
+    source:CloudSource
   }
+
   const initial:OperationControl[]=[
-    {key:'aracruz-frota-pesada',operation:'Aracruz',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
-    {key:'aracruz-maquinas',operation:'Aracruz',fleetType:'Máquinas',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
-    {key:'cenibra-frota-pesada',operation:'Cenibra',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
-    {key:'cenibra-maquinas',operation:'Cenibra',fleetType:'Máquinas',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
-    {key:'costa-rica-frota-pesada',operation:'Costa Rica',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
-    {key:'costa-rica-frota-leve',operation:'Costa Rica',fleetType:'Frota Leve',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
-    {key:'alto-taquari-frota-pesada',operation:'Alto Taquari',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
-    {key:'alto-taquari-frota-leve',operation:'Alto Taquari',fleetType:'Frota Leve',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
-    {key:'ribas-frota-pesada',operation:'Ribas',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
-    {key:'ribas-maquinas',operation:'Ribas',fleetType:'Máquinas',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
-    {key:'bracell-frota-pesada',operation:'Bracell',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Controle operacional'},
-    {key:'jundiai-frota-pesada',operation:'Jundiaí',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Fluxo operacional'},
-    {key:'juatuba-frota-pesada',operation:'Juatuba',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Fluxo operacional'},
+    {key:'F01',operation:'Aracruz',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
+    {key:'F02',operation:'Aracruz',fleetType:'Máquinas',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
+    {key:'F03',operation:'Cenibra',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
+    {key:'F04',operation:'Cenibra',fleetType:'Máquinas',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
+    {key:'F05',operation:'Costa Rica',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
+    {key:'F06',operation:'Costa Rica',fleetType:'Frota Leve',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
+    {key:'F07',operation:'Alto Taquari',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
+    {key:'F08',operation:'Alto Taquari',fleetType:'Frota Leve',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
+    {key:'F09',operation:'Ribas',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
+    {key:'F10',operation:'Ribas',fleetType:'Máquinas',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
+    {key:'F11',operation:'Bracell',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
+    {key:'F12',operation:'Jundiaí',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
+    {key:'F13',operation:'Juatuba',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
   ]
 
   const thirdBusinessDayDeadline=useMemo(()=>{
@@ -387,44 +441,152 @@ function ImportsPage(){
   },[])
   const deadlinePassed=Date.now()>thirdBusinessDayDeadline.getTime()
   const deadlineLabel=thirdBusinessDayDeadline.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})
+  const currentCycle=useMemo(()=>{
+    const now=new Date()
+    return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
+  },[])
+  const cycleCollection=useMemo(()=>collection(db,'closingCycles',currentCycle,'fronts'),[currentCycle])
 
-  const [items,setItems]=useState<OperationControl[]>(()=>{
+  const localSeed=()=>{
     const saved=localStorage.getItem('rivora.operationControl')
     if(!saved) return initial
-    const parsed=JSON.parse(saved) as Array<Omit<OperationControl,'importDecision'> & {importDecision:ImportDecision|'Sim'|'Não'}>
-    return parsed.map(item=>({
-      ...item,
-      importDecision:item.importDecision==='Sim'?'Realiza importação':item.importDecision==='Não'?'Não realiza importação':item.importDecision,
-      importStatus:item.importDecision==='Não'?'Não se aplica':item.importStatus,
-    }))
-  })
-  const [expanded,setExpanded]=useState<string|null>('Juatuba')
+    try{
+      const parsed=JSON.parse(saved) as Array<Partial<OperationControl> & {importDecision?:ImportDecision|'Sim'|'Não'}>
+      return initial.map(base=>{
+        const previous=parsed.find(row=>row.key===base.key||(row.operation===base.operation&&row.fleetType===base.fleetType))
+        if(!previous) return base
+        const decision=previous.importDecision==='Sim'?'Realiza importação':previous.importDecision==='Não'?'Não realiza importação':previous.importDecision
+        return {
+          ...base,
+          closureStatus:(previous.closureStatus??base.closureStatus) as ClosureStatus,
+          importDecision:(decision??base.importDecision) as ImportDecision,
+          importStatus:(previous.importDecision==='Não'?'Não se aplica':previous.importStatus??base.importStatus) as ImportStatus,
+          confirmedAt:typeof previous.confirmedAt==='string'?previous.confirmedAt:null,
+          source:previous.source==='power_automate'?'power_automate':previous.source==='migration'?'migration':'manual',
+        }
+      })
+    }catch{
+      return initial
+    }
+  }
 
-  const persist=(next:OperationControl[])=>{
+  const [items,setItems]=useState<OperationControl[]>(localSeed)
+  const [expanded,setExpanded]=useState<string|null>('Juatuba')
+  const [syncState,setSyncState]=useState<'connecting'|'migrating'|'synced'|'error'>('connecting')
+  const [syncMessage,setSyncMessage]=useState('Conectando ao Firebase protegido...')
+  const [cloudReady,setCloudReady]=useState(false)
+  const migrationAttempted=useRef(false)
+
+  const sourceLabel=(source:CloudSource)=>source==='power_automate'?'Confirmação automática':source==='migration'?'Migrado do dispositivo':'RIVORA'
+  const formatConfirmedAt=(value:string|null)=>{
+    if(!value) return null
+    const parsed=new Date(value)
+    return Number.isNaN(parsed.getTime())?value:parsed.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})
+  }
+  const confirmedTimestamp=(value:string|null)=>{
+    if(!value) return null
+    const parsed=new Date(value)
+    return Number.isNaN(parsed.getTime())?null:Timestamp.fromDate(parsed)
+  }
+  const cloudData=(item:OperationControl,source:item["source"]=item.source)=>({
+    closureStatus:item.closureStatus,
+    importDecision:item.importDecision,
+    importStatus:item.importStatus,
+    confirmedAt:confirmedTimestamp(item.confirmedAt),
+    source,
+    updatedAt:serverTimestamp(),
+  })
+
+  useEffect(()=>{
+    const unsubscribe=onSnapshot(cycleCollection,async snapshot=>{
+      setCloudReady(true)
+
+      if(snapshot.empty&&!migrationAttempted.current){
+        migrationAttempted.current=true
+        setSyncState('migrating')
+        setSyncMessage('Migrando uma única vez os estados locais para o ciclo atual...')
+        try{
+          const batch=writeBatch(db)
+          for(const item of items){
+            batch.set(doc(cycleCollection,item.key),cloudData(item,'migration'))
+          }
+          await batch.commit()
+        }catch{
+          setSyncState('error')
+          setSyncMessage('O Firebase está protegido, mas este usuário ainda não recebeu permissão no Firestore.')
+        }
+        return
+      }
+
+      const remote=new Map<string,Record<string,unknown>>()
+      snapshot.forEach(snapshotDoc=>remote.set(snapshotDoc.id,snapshotDoc.data()))
+      const next=initial.map(base=>{
+        const data=remote.get(base.key)
+        if(!data) return base
+        const rawConfirmed=data.confirmedAt as {toDate?:()=>Date}|null|undefined
+        const confirmedAt=rawConfirmed&&typeof rawConfirmed.toDate==='function'?rawConfirmed.toDate().toISOString():null
+        const source=data.source==='power_automate'?'power_automate':data.source==='migration'?'migration':'manual'
+        return {
+          ...base,
+          closureStatus:(data.closureStatus??base.closureStatus) as ClosureStatus,
+          importDecision:(data.importDecision??base.importDecision) as ImportDecision,
+          importStatus:(data.importStatus??base.importStatus) as ImportStatus,
+          confirmedAt,
+          source,
+        }
+      })
+      setItems(next)
+      localStorage.setItem('rivora.operationControl',JSON.stringify(next))
+      setSyncState('synced')
+      setSyncMessage(`Firebase sincronizado em tempo real • ciclo ${currentCycle}`)
+    },()=>{
+      setCloudReady(false)
+      setSyncState('error')
+      setSyncMessage('Aguardando autorização deste usuário nas regras do Firestore.')
+    })
+
+    return unsubscribe
+  },[cycleCollection,currentCycle])
+
+  const persist=async(next:OperationControl[])=>{
+    const previous=items
     setItems(next)
     localStorage.setItem('rivora.operationControl',JSON.stringify(next))
+    if(!cloudReady) return
+
+    const changed=next.filter((item,index)=>{
+      const before=previous[index]
+      return !before
+        || before.closureStatus!==item.closureStatus
+        || before.importDecision!==item.importDecision
+        || before.importStatus!==item.importStatus
+        || before.confirmedAt!==item.confirmedAt
+        || before.source!==item.source
+    })
+    if(!changed.length) return
+
+    try{
+      const batch=writeBatch(db)
+      for(const item of changed) batch.set(doc(cycleCollection,item.key),cloudData(item),{merge:true})
+      await batch.commit()
+      setSyncState('synced')
+      setSyncMessage(`Firebase sincronizado em tempo real • ciclo ${currentCycle}`)
+    }catch{
+      setSyncState('error')
+      setSyncMessage('Não foi possível salvar no Firestore com as permissões atuais.')
+    }
   }
 
   useEffect(()=>{
-    if(!deadlinePassed) return
-    setItems(current=>{
-      let changed=false
-      const next=current.map(item=>{
-        if(item.closureStatus==='Aguardando confirmação'){
-          changed=true
-          return {...item,closureStatus:'Atrasado' as ClosureStatus}
-        }
-        return item
-      })
-      if(changed) localStorage.setItem('rivora.operationControl',JSON.stringify(next))
-      return changed?next:current
-    })
-  },[deadlinePassed])
+    if(!deadlinePassed||!cloudReady) return
+    const next=items.map(item=>item.closureStatus==='Aguardando confirmação'?{...item,closureStatus:'Atrasado' as ClosureStatus}:item)
+    if(next.some((item,index)=>item.closureStatus!==items[index].closureStatus)) void persist(next)
+  },[deadlinePassed,cloudReady,items])
 
   const toggleClosure=(item:OperationControl)=>{
     const nextStatus:ClosureStatus=item.closureStatus==='Confirmado'?(deadlinePassed?'Atrasado':'Aguardando confirmação'):'Confirmado'
-    const now=nextStatus==='Confirmado'?new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):null
-    persist(items.map(row=>row.key===item.key?{...row,closureStatus:nextStatus,confirmedAt:now}:row))
+    const now=nextStatus==='Confirmado'?new Date().toISOString():null
+    void persist(items.map(row=>row.key===item.key?{...row,closureStatus:nextStatus,confirmedAt:now,source:'manual'}:row))
   }
 
   const cycleDecision=(item:OperationControl)=>{
@@ -434,7 +596,7 @@ function ImportsPage(){
     const nextStatus:ImportStatus=
       nextDecision==='Não realiza importação'?'Não se aplica':
       nextDecision==='Realiza importação'&&item.importStatus==='Não se aplica'?'Não iniciada':item.importStatus
-    persist(items.map(row=>row.key===item.key?{...row,importDecision:nextDecision,importStatus:nextStatus}:row))
+    void persist(items.map(row=>row.key===item.key?{...row,importDecision:nextDecision,importStatus:nextStatus}:row))
   }
 
   const cycleImportStatus=(item:OperationControl)=>{
@@ -442,16 +604,16 @@ function ImportsPage(){
     const nextStatus:ImportStatus=
       item.importStatus==='Não iniciada'?'Em andamento':
       item.importStatus==='Em andamento'?'Concluída':'Não iniciada'
-    persist(items.map(row=>row.key===item.key?{...row,importStatus:nextStatus}:row))
+    void persist(items.map(row=>row.key===item.key?{...row,importStatus:nextStatus}:row))
   }
 
   const confirmOperation=(operation:string)=>{
-    const now=new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})
-    persist(items.map(item=>item.operation===operation?{...item,closureStatus:'Confirmado' as ClosureStatus,confirmedAt:now}:item))
+    const now=new Date().toISOString()
+    void persist(items.map(item=>item.operation===operation?{...item,closureStatus:'Confirmado' as ClosureStatus,confirmedAt:now,source:'manual'}:item))
   }
 
   const setOperationDecision=(operation:string,decision:'Realiza importação'|'Não realiza importação')=>{
-    persist(items.map(item=>{
+    void persist(items.map(item=>{
       if(item.operation!==operation) return item
       const importStatus:ImportStatus=decision==='Não realiza importação'?'Não se aplica':item.importStatus==='Não se aplica'?'Não iniciada':item.importStatus
       return {...item,importDecision:decision,importStatus}
@@ -470,10 +632,10 @@ function ImportsPage(){
       <div><span>OPERAÇÕES</span><b>{operations.length}</b><small>{items.length} frentes de controle</small></div>
       <div><span>FECHAMENTOS CONFIRMADOS</span><b>{confirmed}</b><small>{overdue>0?overdue+' atrasados • ':''}{awaiting} aguardando confirmação</small></div>
       <div><span>VÃO IMPORTAR</span><b>{willImport}</b><small>{importPending} importações pendentes</small></div>
-      <div className="sync-card local">
-        <span>DADOS</span>
-        <b>Modo local protegido</b>
-        <small>A fonte central será conectada somente por integração autorizada e com dados mínimos.</small>
+      <div className={'sync-card '+syncState}>
+        <span>FIREBASE</span>
+        <b>{syncState==='synced'?'Sincronizado':syncState==='migrating'?'Migrando...':syncState==='error'?'Aguardando permissão':'Conectando...'}</b>
+        <small>{syncMessage}</small>
       </div>
     </div>
 
@@ -509,7 +671,7 @@ function ImportsPage(){
             {rows.map(item=><article className="fleet-control-row" key={item.key}>
               <div className="fleet-main">
                 <span className="fleet-icon"><Archive size={17}/></span>
-                <div><b>{item.fleetType}</b><small>{item.source}</small></div>
+                <div><b>{item.fleetType}</b><small>{sourceLabel(item.source)}</small></div>
               </div>
 
               <div className="control-group">
@@ -519,7 +681,7 @@ function ImportsPage(){
                   <b>{item.closureStatus}</b>
                   <ChevronRight size={14}/>
                 </button>
-                <small>{item.confirmedAt?'Confirmado em '+item.confirmedAt:item.closureStatus==='Atrasado'?'Prazo excedido após o 3º dia útil ('+deadlineLabel+')':'Clique para confirmar • prazo '+deadlineLabel}</small>
+                <small>{item.confirmedAt?'Confirmado em '+formatConfirmedAt(item.confirmedAt):item.closureStatus==='Atrasado'?'Prazo excedido após o 3º dia útil ('+deadlineLabel+')':'Clique para confirmar • prazo '+deadlineLabel}</small>
               </div>
 
               <div className="control-group">
@@ -547,6 +709,7 @@ function ImportsPage(){
     </div>
   </PageIntro>
 }
+
 function ReturnsPage({setPage}:{setPage:(p:Page)=>void}){
   type ReturnState={op:string;received:boolean;updated:string}
   const [states,setStates]=useState<ReturnState[]>(()=>{
