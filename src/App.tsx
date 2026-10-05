@@ -406,7 +406,6 @@ function ImportsPage(){
     setItems(next)
     localStorage.setItem('rivora.operationControl',JSON.stringify(next))
   }
-  const update=(key:string,patch:Partial<OperationControl>)=>persist(items.map(item=>item.key===key?{...item,...patch}:item))
 
   useEffect(()=>{
     if(!deadlinePassed) return
@@ -424,20 +423,41 @@ function ImportsPage(){
     })
   },[deadlinePassed])
 
-  const setClosureStatus=(item:OperationControl,value:ClosureStatus)=>{
-    const effective=value==='Aguardando confirmação'&&deadlinePassed?'Atrasado':value
-    update(item.key,{
-      closureStatus:effective,
-      confirmedAt:effective==='Confirmado'?new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):null,
-    })
+  const toggleClosure=(item:OperationControl)=>{
+    const nextStatus:ClosureStatus=item.closureStatus==='Confirmado'?(deadlinePassed?'Atrasado':'Aguardando confirmação'):'Confirmado'
+    const now=nextStatus==='Confirmado'?new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):null
+    persist(items.map(row=>row.key===item.key?{...row,closureStatus:nextStatus,confirmedAt:now}:row))
   }
-  const setDecision=(item:OperationControl,value:ImportDecision)=>{
-    const nextStatus:ImportStatus=value==='Não realiza importação'?'Não se aplica':value==='Realiza importação'&&item.importStatus==='Não se aplica'?'Não iniciada':item.importStatus
-    update(item.key,{importDecision:value,importStatus:nextStatus})
+
+  const cycleDecision=(item:OperationControl)=>{
+    const nextDecision:ImportDecision=
+      item.importDecision==='Pendente'?'Realiza importação':
+      item.importDecision==='Realiza importação'?'Não realiza importação':'Pendente'
+    const nextStatus:ImportStatus=
+      nextDecision==='Não realiza importação'?'Não se aplica':
+      nextDecision==='Realiza importação'&&item.importStatus==='Não se aplica'?'Não iniciada':item.importStatus
+    persist(items.map(row=>row.key===item.key?{...row,importDecision:nextDecision,importStatus:nextStatus}:row))
   }
-  const setImportStatus=(item:OperationControl,value:ImportStatus)=>{
+
+  const cycleImportStatus=(item:OperationControl)=>{
     if(item.importDecision!=='Realiza importação') return
-    update(item.key,{importStatus:value})
+    const nextStatus:ImportStatus=
+      item.importStatus==='Não iniciada'?'Em andamento':
+      item.importStatus==='Em andamento'?'Concluída':'Não iniciada'
+    persist(items.map(row=>row.key===item.key?{...row,importStatus:nextStatus}:row))
+  }
+
+  const confirmOperation=(operation:string)=>{
+    const now=new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})
+    persist(items.map(item=>item.operation===operation?{...item,closureStatus:'Confirmado' as ClosureStatus,confirmedAt:now}:item))
+  }
+
+  const setOperationDecision=(operation:string,decision:'Realiza importação'|'Não realiza importação')=>{
+    persist(items.map(item=>{
+      if(item.operation!==operation) return item
+      const importStatus:ImportStatus=decision==='Não realiza importação'?'Não se aplica':item.importStatus==='Não se aplica'?'Não iniciada':item.importStatus
+      return {...item,importDecision:decision,importStatus}
+    }))
   }
 
   const operations=Array.from(new Set(items.map(item=>item.operation)))
@@ -447,7 +467,7 @@ function ImportsPage(){
   const willImport=items.filter(item=>item.importDecision==='Realiza importação').length
   const importPending=items.filter(item=>item.importDecision==='Realiza importação'&&item.importStatus!=='Concluída').length
 
-  return <PageIntro eyebrow="FECHAMENTOS E IMPORTAÇÕES" title="Fechamentos e importações" text="Confirme o fechamento por operação, registre quem realizará importação e acompanhe o andamento sem repetir operações na tela.">
+  return <PageIntro eyebrow="FECHAMENTOS E IMPORTAÇÕES" title="Fechamentos e importações" text="Clique nos status para avançar rapidamente. Se uma operação inteira estiver igual, use as ações rápidas e evite marcar tipo por tipo.">
     <div className="operation-control-summary">
       <div><span>OPERAÇÕES</span><b>{operations.length}</b><small>{items.length} frentes de controle</small></div>
       <div><span>FECHAMENTOS CONFIRMADOS</span><b>{confirmed}</b><small>{overdue>0?overdue+' atrasados • ':''}{awaiting} aguardando confirmação</small></div>
@@ -475,6 +495,13 @@ function ImportsPage(){
           </button>
 
           {isOpen&&<div className="operation-body">
+            {rows.length>1&&<div className="operation-quick-actions">
+              <span>AÇÕES RÁPIDAS</span>
+              <button onClick={()=>confirmOperation(operation)}><CheckCircle2 size={14}/>Confirmar todos</button>
+              <button onClick={()=>setOperationDecision(operation,'Realiza importação')}><Archive size={14}/>Todos importam</button>
+              <button onClick={()=>setOperationDecision(operation,'Não realiza importação')}><XCircle size={14}/>Nenhum importa</button>
+            </div>}
+
             {rows.map(item=><article className="fleet-control-row" key={item.key}>
               <div className="fleet-main">
                 <span className="fleet-icon"><Archive size={17}/></span>
@@ -483,42 +510,31 @@ function ImportsPage(){
 
               <div className="control-group">
                 <span>FECHAMENTO</span>
-                <div className="select-wrap">
-                  <select className={item.closureStatus==='Confirmado'?'status-select success':item.closureStatus==='Atrasado'?'status-select danger':'status-select warning'} value={item.closureStatus} onChange={e=>setClosureStatus(item,e.target.value as ClosureStatus)}>
-                    <option value="Aguardando confirmação">Aguardando confirmação</option>
-                    <option value="Confirmado">Confirmado</option>
-                    <option value="Atrasado">Atrasado</option>
-                  </select>
+                <button className={item.closureStatus==='Confirmado'?'cycle-button success':item.closureStatus==='Atrasado'?'cycle-button danger':'cycle-button warning'} onClick={()=>toggleClosure(item)}>
+                  {item.closureStatus==='Confirmado'?<CheckCircle2 size={15}/>:<Clock3 size={15}/>}
+                  <b>{item.closureStatus}</b>
                   <ChevronRight size={14}/>
-                </div>
-                <small>{item.confirmedAt?'Confirmado em '+item.confirmedAt:item.closureStatus==='Atrasado'?'Prazo excedido após o 3º dia útil ('+deadlineLabel+')':'Prazo: até o 3º dia útil ('+deadlineLabel+')'}</small>
+                </button>
+                <small>{item.confirmedAt?'Confirmado em '+item.confirmedAt:item.closureStatus==='Atrasado'?'Prazo excedido após o 3º dia útil ('+deadlineLabel+')':'Clique para confirmar • prazo '+deadlineLabel}</small>
               </div>
 
               <div className="control-group">
                 <span>IMPORTAÇÃO</span>
-                <div className="select-wrap">
-                  <select className={item.importDecision==='Realiza importação'?'status-select info':item.importDecision==='Não realiza importação'?'status-select neutral':'status-select warning'} value={item.importDecision} onChange={e=>setDecision(item,e.target.value as ImportDecision)}>
-                    <option value="Pendente">Definir</option>
-                    <option value="Realiza importação">Realiza importação</option>
-                    <option value="Não realiza importação">Não realiza importação</option>
-                  </select>
+                <button className={item.importDecision==='Realiza importação'?'cycle-button info':item.importDecision==='Não realiza importação'?'cycle-button neutral':'cycle-button warning'} onClick={()=>cycleDecision(item)}>
+                  <Archive size={15}/>
+                  <b>{item.importDecision==='Pendente'?'Definir':item.importDecision}</b>
                   <ChevronRight size={14}/>
-                </div>
-                <small>{item.importDecision==='Pendente'?'Aguardando definição':item.importDecision==='Realiza importação'?'Esta frente terá importação':'Esta frente não realiza importação'}</small>
+                </button>
+                <small>{item.importDecision==='Pendente'?'Clique: realiza → não realiza → definir':item.importDecision==='Realiza importação'?'Esta frente terá importação':'Esta frente não realiza importação'}</small>
               </div>
 
               <div className="control-group import-progress">
                 <span>STATUS DA IMPORTAÇÃO</span>
-                <div className="select-wrap">
-                  <select className={item.importStatus==='Concluída'?'status-select success':item.importStatus==='Em andamento'?'status-select info':'status-select neutral'} value={item.importDecision==='Realiza importação'?item.importStatus:'Não se aplica'} onChange={e=>setImportStatus(item,e.target.value as ImportStatus)} disabled={item.importDecision!=='Realiza importação'}>
-                    <option value="Não iniciada">Não iniciada</option>
-                    <option value="Em andamento">Em andamento</option>
-                    <option value="Concluída">Concluída</option>
-                    <option value="Não se aplica">Não se aplica</option>
-                  </select>
-                  <ChevronRight size={14}/>
-                </div>
-                <small>{item.importDecision==='Realiza importação'?'Abra para escolher o status atual':item.importDecision==='Não realiza importação'?'Não se aplica a esta frente':'Defina primeiro se haverá importação'}</small>
+                <button className={item.importStatus==='Concluída'?'cycle-button success':item.importStatus==='Em andamento'?'cycle-button info':'cycle-button neutral'} onClick={()=>cycleImportStatus(item)} disabled={item.importDecision!=='Realiza importação'}>
+                  <b>{item.importDecision==='Realiza importação'?item.importStatus:'Não se aplica'}</b>
+                  {item.importDecision==='Realiza importação'&&<ChevronRight size={14}/>}
+                </button>
+                <small>{item.importDecision==='Realiza importação'?'Clique: não iniciada → em andamento → concluída':item.importDecision==='Não realiza importação'?'Não se aplica a esta frente':'Defina primeiro se haverá importação'}</small>
               </div>
             </article>)}
           </div>}
