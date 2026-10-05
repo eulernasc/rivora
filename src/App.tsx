@@ -345,50 +345,134 @@ function AutomationsPage(){
   </PageIntro>
 }
 function ImportsPage(){
-  type ImportItem={id:number;operation:string;source:string;due:string;status:'Planejada'|'Em validação'|'Concluída'}
-  const initial:ImportItem[]=[
-    {id:1,operation:'Juatuba',source:'Ticket Log',due:'05/10',status:'Planejada'},
-    {id:2,operation:'Jundiaí',source:'Ticket Log',due:'05/10',status:'Planejada'},
+  type ClosureStatus='Aguardando confirmação'|'Confirmado'
+  type ImportDecision='Pendente'|'Sim'|'Não'
+  type ImportStatus='Não iniciada'|'Em andamento'|'Concluída'
+  type OperationControl={
+    key:string
+    operation:string
+    fleetType:string
+    responsible:string
+    closureStatus:ClosureStatus
+    importDecision:ImportDecision
+    importStatus:ImportStatus
+    confirmedAt:string|null
+    source:string
+  }
+
+  const initial:OperationControl[]=[
+    {key:'aracruz-frota-pesada',operation:'Aracruz',fleetType:'Frota Pesada',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
+    {key:'aracruz-maquinas',operation:'Aracruz',fleetType:'Máquinas',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
+    {key:'cenibra-frota-pesada',operation:'Cenibra',fleetType:'Frota Pesada',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
+    {key:'cenibra-maquinas',operation:'Cenibra',fleetType:'Máquinas',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
+    {key:'costa-rica-frota-pesada',operation:'Costa Rica',fleetType:'Frota Pesada',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
+    {key:'costa-rica-frota-leve',operation:'Costa Rica',fleetType:'Frota Leve',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
+    {key:'alto-taquari-frota-pesada',operation:'Alto Taquari',fleetType:'Frota Pesada',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
+    {key:'alto-taquari-frota-leve',operation:'Alto Taquari',fleetType:'Frota Leve',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
+    {key:'ribas-frota-pesada',operation:'Ribas',fleetType:'Frota Pesada',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
+    {key:'ribas-maquinas',operation:'Ribas',fleetType:'Máquinas',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
+    {key:'bracell-frota-pesada',operation:'Bracell',fleetType:'Frota Pesada',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
+    {key:'jundiai-frota-pesada',operation:'Jundiaí',fleetType:'Frota Pesada',responsible:'Euler',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Fluxo Juatuba/Jundiaí'},
+    {key:'juatuba-frota-pesada',operation:'Juatuba',fleetType:'Frota Pesada',responsible:'Euler',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Fluxo Juatuba/Jundiaí'},
   ]
-  const [items,setItems]=useState<ImportItem[]>(()=>{
-    const saved=localStorage.getItem('rivora.imports')
+
+  const [items,setItems]=useState<OperationControl[]>(()=>{
+    const saved=localStorage.getItem('rivora.operationControl')
     return saved?JSON.parse(saved):initial
   })
-  const [creating,setCreating]=useState(false)
-  const [operation,setOperation]=useState('')
-  const [source,setSource]=useState('Ticket Log')
-  const [due,setDue]=useState('Sem prazo')
-  const save=(next:ImportItem[])=>{setItems(next);localStorage.setItem('rivora.imports',JSON.stringify(next))}
-  const add=()=>{
-    if(!operation.trim()) return
-    save([...items,{id:Math.max(0,...items.map(i=>i.id))+1,operation:operation.trim(),source:source.trim()||'Não definida',due,status:'Planejada'}])
-    setOperation('');setDue('Sem prazo');setCreating(false)
+  const [expanded,setExpanded]=useState<string|null>('Juatuba')
+
+  const save=(next:OperationControl[])=>{
+    setItems(next)
+    localStorage.setItem('rivora.operationControl',JSON.stringify(next))
   }
-  const advance=(id:number)=>save(items.map(item=>{
-    if(item.id!==id) return item
-    const status=item.status==='Planejada'?'Em validação':item.status==='Em validação'?'Concluída':'Planejada'
-    return {...item,status}
-  }))
-  return <PageIntro eyebrow="IMPORTAÇÕES" title="Controle de importações" text="Fila local de prazos, fontes, validações e status.">
-    <div className="import-toolbar">
-      <div><span>ABERTAS</span><b>{items.filter(i=>i.status!=='Concluída').length}</b></div>
-      <div><span>CONCLUÍDAS</span><b>{items.filter(i=>i.status==='Concluída').length}</b></div>
-      <button onClick={()=>setCreating(v=>!v)}>{creating?'Cancelar':'+ Nova importação'}</button>
+  const update=(key:string,patch:Partial<OperationControl>)=>save(items.map(item=>item.key===key?{...item,...patch}:item))
+  const markClosure=(item:OperationControl)=>{
+    const confirmed=item.closureStatus!=='Confirmado'
+    update(item.key,{
+      closureStatus:confirmed?'Confirmado':'Aguardando confirmação',
+      confirmedAt:confirmed?new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):null,
+    })
+  }
+  const setDecision=(item:OperationControl,value:ImportDecision)=>{
+    update(item.key,{
+      importDecision:value,
+      importStatus:value==='Não'?'Não iniciada':item.importStatus,
+    })
+  }
+  const advanceImport=(item:OperationControl)=>{
+    if(item.importDecision!=='Sim') return
+    const next:ImportStatus=item.importStatus==='Não iniciada'?'Em andamento':item.importStatus==='Em andamento'?'Concluída':'Não iniciada'
+    update(item.key,{importStatus:next})
+  }
+
+  const operations=Array.from(new Set(items.map(item=>item.operation)))
+  const confirmed=items.filter(item=>item.closureStatus==='Confirmado').length
+  const awaiting=items.length-confirmed
+  const willImport=items.filter(item=>item.importDecision==='Sim').length
+  const importPending=items.filter(item=>item.importDecision==='Sim'&&item.importStatus!=='Concluída').length
+
+  return <PageIntro eyebrow="IMPORTAÇÕES" title="Fechamentos e importações" text="Confirme o fechamento por operação, registre quem realizará importação e acompanhe o andamento sem repetir operações na tela.">
+    <div className="operation-control-summary">
+      <div><span>OPERAÇÕES</span><b>{operations.length}</b><small>{items.length} frentes de controle</small></div>
+      <div><span>FECHAMENTOS CONFIRMADOS</span><b>{confirmed}</b><small>{awaiting} aguardando confirmação</small></div>
+      <div><span>VÃO IMPORTAR</span><b>{willImport}</b><small>{importPending} importações pendentes</small></div>
+      <div className="sync-card"><span>BASE MICROSOFT 365</span><b>Preparada</b><small>SharePoint criado • sincronização automática é a próxima etapa</small></div>
     </div>
-    {creating&&<div className="import-composer">
-      <label><span>OPERAÇÃO</span><input value={operation} onChange={e=>setOperation(e.target.value)} placeholder="Ex.: Juatuba" autoFocus/></label>
-      <label><span>ORIGEM</span><input value={source} onChange={e=>setSource(e.target.value)} placeholder="Sistema ou arquivo"/></label>
-      <label><span>PRAZO</span><input value={due} onChange={e=>setDue(e.target.value)} placeholder="Ex.: 05/10"/></label>
-      <button onClick={add}>Adicionar</button>
-    </div>}
-    <div className="import-list">
-      {items.map(item=><article key={item.id}>
-        <span className="import-index">{String(item.id).padStart(2,'0')}</span>
-        <div><b>{item.operation}</b><small>{item.source}</small></div>
-        <span className="import-due">{item.due}</span>
-        <Pill tone={item.status==='Concluída'?'green':item.status==='Em validação'?'amber':'neutral'}>{item.status}</Pill>
-        <button onClick={()=>advance(item.id)}>{item.status==='Concluída'?'Reabrir':'Avançar'}<ChevronRight size={14}/></button>
-      </article>)}
+
+    <div className="operation-accordion">
+      {operations.map(operation=>{
+        const rows=items.filter(item=>item.operation===operation)
+        const isOpen=expanded===operation
+        const done=rows.filter(item=>item.closureStatus==='Confirmado').length
+        const imports=rows.filter(item=>item.importDecision==='Sim').length
+        const fullyDone=rows.every(item=>item.closureStatus==='Confirmado')
+        return <section className={isOpen?'operation-card open':'operation-card'} key={operation}>
+          <button className="operation-head" onClick={()=>setExpanded(isOpen?null:operation)}>
+            <div className="operation-name"><span className={fullyDone?'operation-dot green':'operation-dot amber'}/><div><b>{operation}</b><small>{rows.length} {rows.length===1?'tipo':'tipos'} de frota</small></div></div>
+            <div className="operation-head-stats">
+              <span><strong>{done}/{rows.length}</strong> fechamentos</span>
+              <span><strong>{imports}</strong> importações</span>
+            </div>
+            <ChevronRight className="operation-chevron" size={18}/>
+          </button>
+
+          {isOpen&&<div className="operation-body">
+            {rows.map(item=><article className="fleet-control-row" key={item.key}>
+              <div className="fleet-main">
+                <span className="fleet-icon"><Archive size={17}/></span>
+                <div><b>{item.fleetType}</b><small>{item.responsible==='Euler'?'Responsável: Euler':'Responsável: operação'} • {item.source}</small></div>
+              </div>
+
+              <div className="control-group">
+                <span>FECHAMENTO</span>
+                <button className={item.closureStatus==='Confirmado'?'control-button success':'control-button warning'} onClick={()=>markClosure(item)}>
+                  {item.closureStatus==='Confirmado'?<CheckCircle2 size={14}/>:<Clock3 size={14}/>}
+                  {item.closureStatus}
+                </button>
+                {item.confirmedAt&&<small>{item.confirmedAt}</small>}
+              </div>
+
+              <div className="control-group">
+                <span>REALIZA IMPORTAÇÃO?</span>
+                <div className="decision-buttons">
+                  {(['Sim','Não'] as const).map(value=><button key={value} className={item.importDecision===value?'decision active':'decision'} onClick={()=>setDecision(item,value)}>{value}</button>)}
+                </div>
+                <small>{item.importDecision==='Pendente'?'Aguardando definição':item.importDecision==='Sim'?'Importação prevista':'Não haverá importação'}</small>
+              </div>
+
+              <div className="control-group import-progress">
+                <span>STATUS DA IMPORTAÇÃO</span>
+                <button className={item.importStatus==='Concluída'?'control-button success':item.importStatus==='Em andamento'?'control-button info':'control-button neutral'} onClick={()=>advanceImport(item)} disabled={item.importDecision!=='Sim'}>
+                  {item.importStatus}
+                  {item.importDecision==='Sim'&&<ChevronRight size={14}/>}
+                </button>
+                <small>{item.importDecision==='Sim'?'Clique para avançar o status':'Disponível quando marcar Sim'}</small>
+              </div>
+            </article>)}
+          </div>}
+        </section>
+      })}
     </div>
   </PageIntro>
 }
