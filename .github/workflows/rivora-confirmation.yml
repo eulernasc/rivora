@@ -1,0 +1,22 @@
+name: RIVORA confirmation bridge
+
+on:
+  repository_dispatch:
+    types: [rivora_confirmation]
+
+permissions:
+  contents: read
+
+jobs:
+  update-confirmation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply confirmation to Firestore
+        run: node scripts/rivora-bridge.mjs
+        env:
+          RIVORA_BRIDGE_EMAIL: ${{ secrets.RIVORA_BRIDGE_EMAIL }}
+          RIVORA_BRIDGE_PASSWORD: ${{ secrets.RIVORA_BRIDGE_PASSWORD }}
