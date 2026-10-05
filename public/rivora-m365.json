@@ -1,0 +1,9 @@
+{
+  "tenantId": "24591b61-de2e-49c4-8d4a-cdad28571338",
+  "clientId": "",
+  "driveId": "b!eHx3sLNPEUKQLD-UqBsRUMlsYe2ku9VMudGBFgnhyGQILRSJ-TA5TbdG02VWk_tM",
+  "itemId": "01JMT3QX2AXTFYBC74P5AJFSWESLY64PYL",
+  "scopes": [
+    "Files.ReadWrite"
+  ]
+}
