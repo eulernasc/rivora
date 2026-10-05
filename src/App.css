@@ -1488,3 +1488,44 @@ body{
   .cycle-button{max-width:none;font-size:11px}
   .cycle-button b{font-size:11px}
 }
+
+
+/* RIVORA M365 sync */
+.sync-card{display:flex;flex-direction:column;align-items:flex-start}
+.sync-card.synced:after{background:linear-gradient(90deg,#31d4a2,transparent 72%)}
+.sync-card.connecting:after{background:linear-gradient(90deg,#36d8ee,transparent 72%)}
+.sync-card.error:after{background:linear-gradient(90deg,#ff6262,transparent 72%)}
+.sync-card.synced b{color:#74e5be}
+.sync-card.error b{color:#ff9c9c}
+.sync-action{
+  min-height:32px;
+  margin-top:12px;
+  padding:0 11px;
+  border:1px solid rgba(62,191,231,.24);
+  border-radius:7px;
+  background:#112a40;
+  color:#bde9f7;
+  font-size:9.5px;
+  cursor:pointer;
+}
+.sync-action:hover:not(:disabled){border-color:rgba(78,207,241,.38);background:#15344e}
+.sync-action:disabled{opacity:.5;cursor:not-allowed}
+.deadline-note{
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:-2px 0 14px;
+  padding:0 12px;
+  border:1px solid rgba(255,174,58,.13);
+  border-radius:9px;
+  background:rgba(42,35,23,.34);
+  color:#b9a77f;
+  font-size:10.5px;
+}
+.deadline-note svg{color:#e5b65e;flex:0 0 auto}
+@media(max-width:760px){
+  .sync-action{width:100%}
+  .deadline-note{align-items:flex-start;padding:10px 12px;line-height:1.45}
+  .deadline-note svg{margin-top:1px}
+}
