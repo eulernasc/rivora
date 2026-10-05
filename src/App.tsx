@@ -488,7 +488,7 @@ function ImportsPage(){
     const parsed=new Date(value)
     return Number.isNaN(parsed.getTime())?null:Timestamp.fromDate(parsed)
   }
-  const cloudData=(item:OperationControl,source:item["source"]=item.source)=>({
+  const cloudData=(item:OperationControl,source:CloudSource=item.source)=>({
     closureStatus:item.closureStatus,
     importDecision:item.importDecision,
     importStatus:item.importStatus,
