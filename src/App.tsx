@@ -6,6 +6,7 @@ import {
   SlidersHorizontal, Workflow, XCircle,
 } from 'lucide-react'
 import './App.css'
+import { connectM365, isM365Configured, readOperationControlCloud, writeOperationControlCloud } from './m365Sync'
 
 type Page = 'Visão geral' | 'Relatórios' | 'Tarefas' | 'Automações' | 'Fechamentos e Importações' | 'Retornos' | 'Análises' | 'Histórico'
 type Task = { id:number; title:string; meta:string; done:boolean; due:string }
@@ -359,6 +360,7 @@ function ImportsPage(){
     confirmedAt:string|null
     source:string
   }
+  type SyncStatus='local'|'ready'|'connecting'|'synced'|'error'
 
   const initial:OperationControl[]=[
     {key:'aracruz-frota-pesada',operation:'Aracruz',fleetType:'Frota Pesada',responsible:'Operação',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'Microsoft 365'},
@@ -401,11 +403,104 @@ function ImportsPage(){
     }))
   })
   const [expanded,setExpanded]=useState<string|null>('Juatuba')
+  const [cloudConfigured,setCloudConfigured]=useState(false)
+  const [cloudConnected,setCloudConnected]=useState(false)
+  const [syncStatus,setSyncStatus]=useState<SyncStatus>('local')
+  const [syncMessage,setSyncMessage]=useState('Usando dados locais neste navegador.')
+
+  const cloudDocument=(next:OperationControl[])=>({
+    version:3,
+    updatedAt:new Date().toISOString(),
+    deadlinePolicy:{
+      closureConfirmation:'after-third-business-day',
+      businessDayRule:'monday-friday',
+      automaticLateStatus:true,
+      note:'Feriados ainda não são descontados automaticamente nesta etapa.',
+    },
+    operations:next.map(item=>({
+      key:item.key,
+      operation:item.operation,
+      fleetType:item.fleetType,
+      responsible:item.responsible,
+      closureStatus:item.closureStatus,
+      importDecision:item.importDecision,
+      importStatus:item.importStatus,
+      confirmedAt:item.confirmedAt,
+      source:item.source,
+    })),
+  })
+
+  const pushCloud=async(next:OperationControl[])=>{
+    try{
+      setSyncStatus('connecting')
+      setSyncMessage('Salvando alterações no SharePoint...')
+      await writeOperationControlCloud(cloudDocument(next))
+      setSyncStatus('synced')
+      setSyncMessage('SharePoint atualizado agora.')
+    }catch(error){
+      setSyncStatus('error')
+      setSyncMessage(error instanceof Error?error.message:'Falha ao sincronizar com o SharePoint.')
+    }
+  }
 
   const persist=(next:OperationControl[])=>{
     setItems(next)
     localStorage.setItem('rivora.operationControl',JSON.stringify(next))
+    if(cloudConnected) void pushCloud(next)
   }
+
+  const mergeCloudItems=(cloudOperations:unknown[])=>{
+    const byKey=new Map<string,Partial<OperationControl>>()
+    for(const raw of cloudOperations){
+      if(!raw||typeof raw!=='object') continue
+      const candidate=raw as Partial<OperationControl>
+      if(typeof candidate.key==='string') byKey.set(candidate.key,candidate)
+    }
+    return initial.map(base=>{
+      const remote=byKey.get(base.key)
+      return remote?{...base,...remote,source:remote.source??base.source,confirmedAt:remote.confirmedAt??null}:base
+    })
+  }
+
+  const connectAndLoad=async()=>{
+    if(!cloudConfigured) return
+    try{
+      setSyncStatus('connecting')
+      setSyncMessage(cloudConnected?'Atualizando dados do SharePoint...':'Entrando com sua conta Microsoft...')
+      if(!cloudConnected) await connectM365()
+      const document=await readOperationControlCloud()
+      const next=mergeCloudItems(Array.isArray(document.operations)?document.operations:[])
+      setItems(next)
+      localStorage.setItem('rivora.operationControl',JSON.stringify(next))
+      setCloudConnected(true)
+      setSyncStatus('synced')
+      setSyncMessage('Dados carregados do SharePoint.')
+    }catch(error){
+      setSyncStatus('error')
+      setSyncMessage(error instanceof Error?error.message:'Não foi possível conectar ao Microsoft 365.')
+    }
+  }
+
+  useEffect(()=>{
+    let active=true
+    void isM365Configured().then(configured=>{
+      if(!active) return
+      setCloudConfigured(configured)
+      if(configured){
+        setSyncStatus('ready')
+        setSyncMessage('Microsoft 365 configurado. Conecte sua conta para sincronizar.')
+      }else{
+        setSyncStatus('local')
+        setSyncMessage('Integração preparada; falta registrar o aplicativo Microsoft Entra.')
+      }
+    }).catch(()=>{
+      if(active){
+        setSyncStatus('error')
+        setSyncMessage('Não foi possível carregar a configuração do Microsoft 365.')
+      }
+    })
+    return()=>{active=false}
+  },[])
 
   useEffect(()=>{
     if(!deadlinePassed) return
@@ -418,10 +513,13 @@ function ImportsPage(){
         }
         return item
       })
-      if(changed) localStorage.setItem('rivora.operationControl',JSON.stringify(next))
+      if(changed){
+        localStorage.setItem('rivora.operationControl',JSON.stringify(next))
+        if(cloudConnected) void pushCloud(next)
+      }
       return changed?next:current
     })
-  },[deadlinePassed])
+  },[deadlinePassed,cloudConnected])
 
   const toggleClosure=(item:OperationControl)=>{
     const nextStatus:ClosureStatus=item.closureStatus==='Confirmado'?(deadlinePassed?'Atrasado':'Aguardando confirmação'):'Confirmado'
@@ -472,8 +570,17 @@ function ImportsPage(){
       <div><span>OPERAÇÕES</span><b>{operations.length}</b><small>{items.length} frentes de controle</small></div>
       <div><span>FECHAMENTOS CONFIRMADOS</span><b>{confirmed}</b><small>{overdue>0?overdue+' atrasados • ':''}{awaiting} aguardando confirmação</small></div>
       <div><span>VÃO IMPORTAR</span><b>{willImport}</b><small>{importPending} importações pendentes</small></div>
-      <div className="sync-card"><span>REGRA DE PRAZO</span><b>3º dia útil</b><small>Sem confirmação após {deadlineLabel}, o fechamento muda automaticamente para atrasado.</small></div>
+      <div className={'sync-card '+syncStatus}>
+        <span>MICROSOFT 365</span>
+        <b>{syncStatus==='synced'?'Sincronizado':syncStatus==='connecting'?'Sincronizando...':syncStatus==='error'?'Atenção':cloudConfigured?'Pronto para conectar':'Configuração pendente'}</b>
+        <small>{syncMessage}</small>
+        <button className="sync-action" onClick={connectAndLoad} disabled={!cloudConfigured||syncStatus==='connecting'}>
+          {syncStatus==='synced'?'Atualizar do SharePoint':cloudConfigured?'Conectar Microsoft 365':'Aguardando App ID'}
+        </button>
+      </div>
     </div>
+
+    <div className="deadline-note"><Clock3 size={14}/><span>Prazo de confirmação: até o 3º dia útil do mês ({deadlineLabel}). Depois disso, pendências mudam automaticamente para atrasado.</span></div>
 
     <div className="operation-accordion">
       {operations.map(operation=>{
