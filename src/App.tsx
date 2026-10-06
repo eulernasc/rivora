@@ -35,8 +35,9 @@ const AUTOMATIONS = [
 ]
 
 type FrontDefinition={key:string;operation:string;fleetType:string}
+type OperationDefinition={id:string;name:string;frontKeys:string[]}
 type Responsible={id:string;name:string;email:string;active:boolean}
-type FrontAssignments=Record<string,string|null>
+type OperationAssignments=Record<string,string|null>
 
 const FRONT_DEFINITIONS:FrontDefinition[]=[
   {key:'F01',operation:'Aracruz',fleetType:'Frota Pesada'},
@@ -54,9 +55,20 @@ const FRONT_DEFINITIONS:FrontDefinition[]=[
   {key:'F13',operation:'Juatuba',fleetType:'Frota Pesada'},
 ]
 
+const OPERATION_DEFINITIONS:OperationDefinition[]=[
+  {id:'OP01',name:'Aracruz',frontKeys:['F01','F02']},
+  {id:'OP02',name:'Cenibra',frontKeys:['F03','F04']},
+  {id:'OP03',name:'Costa Rica',frontKeys:['F05','F06']},
+  {id:'OP04',name:'Alto Taquari',frontKeys:['F07','F08']},
+  {id:'OP05',name:'Ribas',frontKeys:['F09','F10']},
+  {id:'OP06',name:'Bracell',frontKeys:['F11']},
+  {id:'OP07',name:'Jundiaí',frontKeys:['F12']},
+  {id:'OP08',name:'Juatuba',frontKeys:['F13']},
+]
+
 function useResponsibilityData(){
   const [responsibles,setResponsibles]=useState<Responsible[]>([])
-  const [assignments,setAssignments]=useState<FrontAssignments>({})
+  const [assignments,setAssignments]=useState<OperationAssignments>({})
   const [error,setError]=useState('')
 
   useEffect(()=>onSnapshot(collection(db,'responsibles'),snapshot=>{
@@ -72,8 +84,8 @@ function useResponsibilityData(){
     setError('')
   },()=>setError('Não foi possível carregar os responsáveis.')),[])
 
-  useEffect(()=>onSnapshot(collection(db,'frontAssignments'),snapshot=>{
-    const next:FrontAssignments={}
+  useEffect(()=>onSnapshot(collection(db,'operationAssignments'),snapshot=>{
+    const next:OperationAssignments={}
     snapshot.forEach(item=>{
       const value=item.data().responsibleId
       next[item.id]=typeof value==='string'&&value?value:null
@@ -519,8 +531,9 @@ function ImportsPage(){
   const [items,setItems]=useState<OperationControl[]>(localSeed)
   const [expanded,setExpanded]=useState<string|null>('Juatuba')
   const {responsibles,assignments}=useResponsibilityData()
-  const responsibleFor=(frontId:string)=>{
-    const responsibleId=assignments[frontId]
+  const responsibleFor=(operationName:string)=>{
+    const operation=OPERATION_DEFINITIONS.find(item=>item.name===operationName)
+    const responsibleId=operation?assignments[operation.id]:null
     return responsibleId?responsibles.find(item=>item.id===responsibleId):undefined
   }
   const [syncState,setSyncState]=useState<'connecting'|'migrating'|'synced'|'error'>('connecting')
@@ -722,7 +735,7 @@ function ImportsPage(){
             {rows.map(item=><article className="fleet-control-row" key={item.key}>
               <div className="fleet-main">
                 <span className="fleet-icon"><Archive size={17}/></span>
-                <div><b>{item.fleetType}</b><small>{responsibleFor(item.key)?.name?'Responsável: '+responsibleFor(item.key)?.name+' • '+sourceLabel(item.source):'Responsável não definido • '+sourceLabel(item.source)}</small></div>
+                <div><b>{item.fleetType}</b><small>{responsibleFor(item.operation)?.name?'Responsável: '+responsibleFor(item.operation)?.name+' • '+sourceLabel(item.source):'Responsável não definido • '+sourceLabel(item.source)}</small></div>
               </div>
 
               <div className="control-group">
@@ -769,7 +782,7 @@ function ResponsiblesPage(){
   const [message,setMessage]=useState('')
 
   const active=responsibles.filter(item=>item.active)
-  const assigned=FRONT_DEFINITIONS.filter(front=>assignments[front.key]).length
+  const assigned=OPERATION_DEFINITIONS.filter(operation=>assignments[operation.id]).length
 
   const createResponsible=async(event:FormEvent)=>{
     event.preventDefault()
@@ -817,11 +830,11 @@ function ResponsiblesPage(){
     }
   }
 
-  const assignFront=async(frontId:string,responsibleId:string)=>{
+  const assignOperation=async(operationId:string,responsibleId:string)=>{
     setMessage('')
     try{
       const batch=writeBatch(db)
-      batch.set(doc(db,'frontAssignments',frontId),{
+      batch.set(doc(db,'operationAssignments',operationId),{
         responsibleId:responsibleId||null,
         updatedAt:serverTimestamp(),
       })
@@ -831,12 +844,12 @@ function ResponsiblesPage(){
     }
   }
 
-  const frontsFor=(responsibleId:string)=>FRONT_DEFINITIONS.filter(front=>assignments[front.key]===responsibleId)
+  const operationsFor=(responsibleId:string)=>OPERATION_DEFINITIONS.filter(operation=>assignments[operation.id]===responsibleId)
 
   return <PageIntro eyebrow="RESPONSÁVEIS" title="Responsáveis por operação" text="Cadastre colaboradores sem criar login no RIVORA e vincule cada frente ao responsável operacional.">
     <div className="responsible-summary">
       <div><span>CADASTRADOS</span><b>{responsibles.length}</b><small>{active.length} ativos</small></div>
-      <div><span>FRENTES VINCULADAS</span><b>{assigned}</b><small>{FRONT_DEFINITIONS.length-assigned} sem responsável</small></div>
+      <div><span>OPERAÇÕES VINCULADAS</span><b>{assigned}</b><small>{OPERATION_DEFINITIONS.length-assigned} sem responsável</small></div>
       <div><span>ACESSO AO RIVORA</span><b>1 admin</b><small>Colaboradores não recebem usuário ou senha</small></div>
     </div>
 
@@ -854,10 +867,10 @@ function ResponsiblesPage(){
         <header><div><span>COLABORADORES</span><h3>Responsáveis cadastrados</h3></div><small>{responsibles.length} registros</small></header>
         <div className="responsible-list">
           {responsibles.length?responsibles.map(item=>{
-            const fronts=frontsFor(item.id)
+            const operations=operationsFor(item.id)
             return <article key={item.id} className={item.active?'responsible-person':'responsible-person inactive'}>
               <div className="responsible-avatar">{item.name.split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase()}</div>
-              <div className="responsible-person-copy"><b>{item.name}</b><span>{item.email}</span><small>{fronts.length?fronts.map(front=>front.operation+' • '+front.fleetType).join(' · '):'Nenhuma frente vinculada'}</small></div>
+              <div className="responsible-person-copy"><b>{item.name}</b><span>{item.email}</span><small>{operations.length?operations.map(operation=>operation.name).join(' · '):'Nenhuma operação vinculada'}</small></div>
               <button onClick={()=>void toggleResponsible(item)}>{item.active?'Ativo':'Inativo'}</button>
             </article>
           }):<div className="responsible-empty">Nenhum responsável cadastrado ainda.</div>}
@@ -865,14 +878,15 @@ function ResponsiblesPage(){
       </div>
 
       <div className="responsible-panel">
-        <header><div><span>VÍNCULOS</span><h3>Frentes e responsáveis</h3></div><small>1 responsável por frente</small></header>
+        <header><div><span>VÍNCULOS</span><h3>Operações e responsáveis</h3></div><small>1 responsável por operação</small></header>
         <div className="assignment-list">
-          {FRONT_DEFINITIONS.map(front=>{
-            const currentId=assignments[front.key]??''
+          {OPERATION_DEFINITIONS.map(operation=>{
+            const currentId=assignments[operation.id]??''
             const current=responsibles.find(item=>item.id===currentId)
-            return <article key={front.key}>
-              <div className="assignment-front"><span>{front.key}</span><div><b>{front.operation}</b><small>{front.fleetType}</small></div></div>
-              <select value={currentId} onChange={e=>void assignFront(front.key,e.target.value)}>
+            const fleetTypes=operation.frontKeys.map(key=>FRONT_DEFINITIONS.find(front=>front.key===key)?.fleetType).filter(Boolean).join(' + ')
+            return <article key={operation.id}>
+              <div className="assignment-front"><span>{operation.id}</span><div><b>{operation.name}</b><small>{fleetTypes}</small></div></div>
+              <select value={currentId} onChange={e=>void assignOperation(operation.id,e.target.value)}>
                 <option value="">Sem responsável</option>
                 {active.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
                 {current&&!current.active&&<option value={current.id}>{current.name} (inativo)</option>}
@@ -885,7 +899,7 @@ function ResponsiblesPage(){
 
     <div className="responsible-privacy-note">
       <CheckCircle2 size={15}/>
-      <span>O responsável é cadastro operacional. Ele não recebe login do RIVORA. O envio de confirmação continua pelo Power Automate/Teams.</span>
+      <span>O responsável é definido por operação e vale para todos os tipos de frota dela. A confirmação pelo Power Automate/Teams será única por operação, após a conclusão das importações aplicáveis.</span>
     </div>
   </PageIntro>
 }
