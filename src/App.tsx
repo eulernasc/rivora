@@ -142,7 +142,7 @@ function LoginPage(){
       <label><span>SENHA</span><input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} required/></label>
       {error&&<div className="auth-error">{error}</div>}
       <button type="submit" disabled={loading}>{loading?'Entrando...':'Entrar'}</button>
-      <small>O RIVORA não exibe nem compartilha sua identidade com as confirmações operacionais.</small>
+      <small>Seu acesso administrativo é autenticado. Colaboradores cadastrados como responsáveis não recebem login no RIVORA.</small>
     </form>
   </div>
 }
