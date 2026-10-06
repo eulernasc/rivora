@@ -23,7 +23,357 @@ service cloud.firestore {
     }
 
     function validFront(frontId) {
-      return frontId.matches('^F(0[1-9]|1[0-3])$');
+      return frontId.matches('^F(0[1-9]|1[0-3])
+    function validClosureStatus(value) {
+      return value in ['Aguardando confirmação', 'Confirmado', 'Atrasado'];
+    }
+
+    function validImportDecision(value) {
+      return value in ['Pendente', 'Realiza importação', 'Não realiza importação'];
+    }
+
+    function validImportStatus(value) {
+      return value in ['Não iniciada', 'Em andamento', 'Concluída', 'Não se aplica'];
+    }
+
+    function validSource(value) {
+      return value in ['manual', 'migration', 'power_automate'];
+    }
+
+    function validOptionalConfirmedAt() {
+      return !('confirmedAt' in request.resource.data)
+        || request.resource.data.confirmedAt == null
+        || request.resource.data.confirmedAt is timestamp;
+    }
+
+    function validFrontDocument() {
+      return request.resource.data.keys().hasOnly([
+          'closureStatus',
+          'importDecision',
+          'importStatus',
+          'confirmedAt',
+          'source',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'closureStatus',
+          'importDecision',
+          'importStatus',
+          'source',
+          'updatedAt'
+        ])
+        && validClosureStatus(request.resource.data.closureStatus)
+        && validImportDecision(request.resource.data.importDecision)
+        && validImportStatus(request.resource.data.importStatus)
+        && validSource(request.resource.data.source)
+        && validOptionalConfirmedAt()
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function validBridgeCreate() {
+      return request.resource.data.keys().hasOnly([
+          'closureStatus',
+          'confirmedAt',
+          'source',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'closureStatus',
+          'confirmedAt',
+          'source',
+          'updatedAt'
+        ])
+        && request.resource.data.closureStatus == 'Confirmado'
+        && request.resource.data.source == 'power_automate'
+        && request.resource.data.confirmedAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function validBridgeUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'closureStatus',
+          'confirmedAt',
+          'source',
+          'updatedAt'
+        ])
+        && request.resource.data.closureStatus == 'Confirmado'
+        && request.resource.data.source == 'power_automate'
+        && request.resource.data.confirmedAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    match /authorizedUsers/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    function validResponsibleDocument(isCreate) {
+      return request.resource.data.keys().hasOnly([
+          'name',
+          'email',
+          'active',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'name',
+          'email',
+          'active',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.email is string
+        && request.resource.data.email.size() > 3
+        && request.resource.data.email.size() <= 254
+        && request.resource.data.active is bool
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && (isCreate || request.resource.data.createdAt == resource.data.createdAt);
+    }
+
+    function validAssignment() {
+      return request.resource.data.keys().hasOnly([
+          'responsibleId',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'responsibleId',
+          'updatedAt'
+        ])
+        && (
+          request.resource.data.responsibleId == null
+          || request.resource.data.responsibleId is string
+        )
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    match /responsibles/{responsibleId} {
+      allow list: if roleIs('admin');
+      allow get: if roleIs('admin');
+      allow create: if roleIs('admin') && validResponsibleDocument(true);
+      allow update: if roleIs('admin') && validResponsibleDocument(false);
+      allow delete: if false;
+    }
+
+    match /operationAssignments/{operationId} {
+      allow list: if roleIs('admin');
+      allow get: if roleIs('admin') && validOperation(operationId);
+      allow create, update: if roleIs('admin')
+        && validOperation(operationId)
+        && validAssignment();
+      allow delete: if false;
+    }
+
+    match /closingCycles/{cycle}/fronts/{frontId} {
+      // Collection listeners are list operations. Firestore rules are not filters,
+      // so the list rule cannot depend on each possible document ID matching F01..F13.
+      // Access remains restricted to authenticated authorized users and a valid cycle.
+      allow list: if roleIs('admin') && validCycle(cycle);
+      allow get: if roleIs('admin') && validCycle(cycle) && validFront(frontId);
+
+      allow create: if validCycle(cycle)
+        && validFront(frontId)
+        && (
+          (roleIs('admin') && validFrontDocument())
+          || (roleIs('bridge') && validBridgeCreate())
+        );
+
+      allow update: if validCycle(cycle)
+        && validFront(frontId)
+        && (
+          (roleIs('admin') && validFrontDocument())
+          || (roleIs('bridge') && validBridgeUpdate())
+        );
+
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+);
+    }
+
+    function validOperation(operationId) {
+      return operationId.matches('^OP0[1-8]
+    function validClosureStatus(value) {
+      return value in ['Aguardando confirmação', 'Confirmado', 'Atrasado'];
+    }
+
+    function validImportDecision(value) {
+      return value in ['Pendente', 'Realiza importação', 'Não realiza importação'];
+    }
+
+    function validImportStatus(value) {
+      return value in ['Não iniciada', 'Em andamento', 'Concluída', 'Não se aplica'];
+    }
+
+    function validSource(value) {
+      return value in ['manual', 'migration', 'power_automate'];
+    }
+
+    function validOptionalConfirmedAt() {
+      return !('confirmedAt' in request.resource.data)
+        || request.resource.data.confirmedAt == null
+        || request.resource.data.confirmedAt is timestamp;
+    }
+
+    function validFrontDocument() {
+      return request.resource.data.keys().hasOnly([
+          'closureStatus',
+          'importDecision',
+          'importStatus',
+          'confirmedAt',
+          'source',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'closureStatus',
+          'importDecision',
+          'importStatus',
+          'source',
+          'updatedAt'
+        ])
+        && validClosureStatus(request.resource.data.closureStatus)
+        && validImportDecision(request.resource.data.importDecision)
+        && validImportStatus(request.resource.data.importStatus)
+        && validSource(request.resource.data.source)
+        && validOptionalConfirmedAt()
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function validBridgeCreate() {
+      return request.resource.data.keys().hasOnly([
+          'closureStatus',
+          'confirmedAt',
+          'source',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'closureStatus',
+          'confirmedAt',
+          'source',
+          'updatedAt'
+        ])
+        && request.resource.data.closureStatus == 'Confirmado'
+        && request.resource.data.source == 'power_automate'
+        && request.resource.data.confirmedAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function validBridgeUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'closureStatus',
+          'confirmedAt',
+          'source',
+          'updatedAt'
+        ])
+        && request.resource.data.closureStatus == 'Confirmado'
+        && request.resource.data.source == 'power_automate'
+        && request.resource.data.confirmedAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    match /authorizedUsers/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    function validResponsibleDocument(isCreate) {
+      return request.resource.data.keys().hasOnly([
+          'name',
+          'email',
+          'active',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'name',
+          'email',
+          'active',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.email is string
+        && request.resource.data.email.size() > 3
+        && request.resource.data.email.size() <= 254
+        && request.resource.data.active is bool
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && (isCreate || request.resource.data.createdAt == resource.data.createdAt);
+    }
+
+    function validAssignment() {
+      return request.resource.data.keys().hasOnly([
+          'responsibleId',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'responsibleId',
+          'updatedAt'
+        ])
+        && (
+          request.resource.data.responsibleId == null
+          || request.resource.data.responsibleId is string
+        )
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    match /responsibles/{responsibleId} {
+      allow list: if roleIs('admin');
+      allow get: if roleIs('admin');
+      allow create: if roleIs('admin') && validResponsibleDocument(true);
+      allow update: if roleIs('admin') && validResponsibleDocument(false);
+      allow delete: if false;
+    }
+
+    match /frontAssignments/{frontId} {
+      allow list: if roleIs('admin');
+      allow get: if roleIs('admin') && validFront(frontId);
+      allow create, update: if roleIs('admin')
+        && validFront(frontId)
+        && validAssignment();
+      allow delete: if false;
+    }
+
+    match /closingCycles/{cycle}/fronts/{frontId} {
+      // Collection listeners are list operations. Firestore rules are not filters,
+      // so the list rule cannot depend on each possible document ID matching F01..F13.
+      // Access remains restricted to authenticated authorized users and a valid cycle.
+      allow list: if roleIs('admin') && validCycle(cycle);
+      allow get: if roleIs('admin') && validCycle(cycle) && validFront(frontId);
+
+      allow create: if validCycle(cycle)
+        && validFront(frontId)
+        && (
+          (roleIs('admin') && validFrontDocument())
+          || (roleIs('bridge') && validBridgeCreate())
+        );
+
+      allow update: if validCycle(cycle)
+        && validFront(frontId)
+        && (
+          (roleIs('admin') && validFrontDocument())
+          || (roleIs('bridge') && validBridgeUpdate())
+        );
+
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+);
     }
 
     function validClosureStatus(value) {
