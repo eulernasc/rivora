@@ -38,6 +38,13 @@ type FrontDefinition={key:string;operation:string;fleetType:string}
 type OperationDefinition={id:string;name:string;frontKeys:string[]}
 type Responsible={id:string;name:string;email:string;active:boolean}
 type OperationAssignments=Record<string,string|null>
+type OperationConfirmation={
+  operationId:string
+  status:'pending'|'confirmed'
+  expectedAt:string|null
+  confirmedAt:string|null
+  lastAskedAt:string|null
+}
 
 const FRONT_DEFINITIONS:FrontDefinition[]=[
   {key:'F01',operation:'Aracruz',fleetType:'Frota Pesada'},
@@ -95,6 +102,41 @@ function useResponsibilityData(){
   },()=>setError('Não foi possível carregar os vínculos das operações.')),[])
 
   return {responsibles,assignments,error}
+}
+
+function toIsoTimestamp(value:unknown){
+  const timestamp=value as {toDate?:()=>Date}|null|undefined
+  return timestamp&&typeof timestamp.toDate==='function'?timestamp.toDate().toISOString():null
+}
+
+function useOperationConfirmations(cycle:string){
+  const [confirmations,setConfirmations]=useState<Record<string,OperationConfirmation>>({})
+  const [error,setError]=useState('')
+
+  useEffect(()=>onSnapshot(collection(db,'closingCycles',cycle,'operations'),snapshot=>{
+    const next:Record<string,OperationConfirmation>={}
+    snapshot.forEach(item=>{
+      const data=item.data()
+      if((data.status==='pending'||data.status==='confirmed')&&OPERATION_DEFINITIONS.some(operation=>operation.id===item.id)){
+        next[item.id]={
+          operationId:item.id,
+          status:data.status,
+          expectedAt:toIsoTimestamp(data.expectedAt),
+          confirmedAt:toIsoTimestamp(data.confirmedAt),
+          lastAskedAt:toIsoTimestamp(data.lastAskedAt),
+        }
+      }
+    })
+    setConfirmations(next)
+    setError('')
+  },()=>setError('Não foi possível carregar as confirmações de importação.')),[cycle])
+
+  return {confirmations,error}
+}
+
+function currentCycleId(){
+  const now=new Date()
+  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
 }
 
 const SEARCH_ITEMS:Array<{label:string;detail:string;page:Page}> = [
@@ -271,6 +313,20 @@ function DashboardApp(){
 
 function Overview({today,tasks,setPage}:{today:string;tasks:Task[];setPage:(p:Page)=>void}){
   const pending=tasks.filter(t=>!t.done).length
+  const currentCycle=useMemo(currentCycleId,[])
+  const {responsibles,assignments}=useResponsibilityData()
+  const {confirmations}=useOperationConfirmations(currentCycle)
+  const deadlineItems=OPERATION_DEFINITIONS.map(operation=>{
+    const confirmation=confirmations[operation.id]
+    if(!confirmation||confirmation.status!=='pending'||!confirmation.expectedAt) return null
+    const responsibleId=assignments[operation.id]
+    const responsible=responsibleId?responsibles.find(item=>item.id===responsibleId):undefined
+    return {operation,confirmation,responsible}
+  }).filter((item):item is NonNullable<typeof item>=>item!==null)
+    .sort((a,b)=>new Date(a.confirmation.expectedAt!).getTime()-new Date(b.confirmation.expectedAt!).getTime())
+
+  const formatDeadline=(value:string)=>new Date(value).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})
+
   return <>
     <section className="dash-hero">
       <div className="dash-hero-copy">
@@ -347,6 +403,24 @@ function Overview({today,tasks,setPage}:{today:string;tasks:Task[];setPage:(p:Pa
           <TimelineItem title="Jundiaí segue aguardando correção" time="Em acompanhamento"/>
           <TimelineItem title="RIVORA atualizado" time="Agora"/>
         </div>
+      </div>
+    </section>
+
+    <section className="dash-panel import-deadlines-panel">
+      <header>
+        <div className="panel-title-with-icon"><span className="panel-symbol amber-symbol"><Clock3 size={19}/></span><div><h3>Prazos informados</h3><small>Novas previsões dadas pelos responsáveis das operações</small></div></div>
+        <button onClick={()=>setPage('Fechamentos e Importações')}>Abrir importações <ChevronRight size={15}/></button>
+      </header>
+      <div className="import-deadline-list">
+        {deadlineItems.length?deadlineItems.map(({operation,confirmation,responsible})=>{
+          const overdue=new Date(confirmation.expectedAt!).getTime()<Date.now()
+          return <button key={operation.id} onClick={()=>setPage('Fechamentos e Importações')} className={overdue?'overdue':''}>
+            <span className={overdue?'deadline-dot overdue':'deadline-dot'}/>
+            <div><b>{operation.name}</b><small>{responsible?.name??'Responsável não definido'}</small></div>
+            <strong>{overdue?'Prazo vencido • ':''}{formatDeadline(confirmation.expectedAt!)}</strong>
+            <ChevronRight size={15}/>
+          </button>
+        }):<div className="import-deadline-empty"><CheckCircle2 size={16}/><span>Nenhuma nova previsão de importação informada no ciclo {currentCycle}.</span></div>}
       </div>
     </section>
 
@@ -499,10 +573,7 @@ function ImportsPage(){
   },[])
   const deadlinePassed=Date.now()>thirdBusinessDayDeadline.getTime()
   const deadlineLabel=thirdBusinessDayDeadline.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})
-  const currentCycle=useMemo(()=>{
-    const now=new Date()
-    return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
-  },[])
+  const currentCycle=useMemo(currentCycleId,[])
   const cycleCollection=useMemo(()=>collection(db,'closingCycles',currentCycle,'fronts'),[currentCycle])
 
   const localSeed=():OperationControl[]=>{
@@ -531,6 +602,7 @@ function ImportsPage(){
   const [items,setItems]=useState<OperationControl[]>(localSeed)
   const [expanded,setExpanded]=useState<string|null>('Juatuba')
   const {responsibles,assignments}=useResponsibilityData()
+  const {confirmations}=useOperationConfirmations(currentCycle)
   const responsibleFor=(operationName:string)=>{
     const operation=OPERATION_DEFINITIONS.find(item=>item.name===operationName)
     const responsibleId=operation?assignments[operation.id]:null
@@ -664,10 +736,8 @@ function ImportsPage(){
   }
 
   const cycleImportStatus=(item:OperationControl)=>{
-    if(item.importDecision!=='Realiza importação') return
-    const nextStatus:ImportStatus=
-      item.importStatus==='Não iniciada'?'Em andamento':
-      item.importStatus==='Em andamento'?'Concluída':'Não iniciada'
+    if(item.importDecision!=='Realiza importação'||item.importStatus==='Concluída') return
+    const nextStatus:ImportStatus=item.importStatus==='Não iniciada'?'Em andamento':'Não iniciada'
     void persist(items.map(row=>row.key===item.key?{...row,importStatus:nextStatus}:row))
   }
 
@@ -713,6 +783,13 @@ function ImportsPage(){
         const late=rows.filter(item=>item.closureStatus==='Atrasado').length
         const imports=rows.filter(item=>item.importDecision==='Realiza importação').length
         const fullyDone=rows.every(item=>item.closureStatus==='Confirmado')
+        const operationDefinition=OPERATION_DEFINITIONS.find(item=>item.name===operation)
+        const confirmation=operationDefinition?confirmations[operationDefinition.id]:undefined
+        const responsible=responsibleFor(operation)
+        const expectedAt=confirmation?.expectedAt?new Date(confirmation.expectedAt):null
+        const responseState=confirmation?.status==='confirmed'?'confirmed':expectedAt&&expectedAt.getTime()<Date.now()?'overdue':confirmation?.status==='pending'?'pending':'waiting'
+        const responseTitle=confirmation?.status==='confirmed'?'Importações concluídas pelo responsável':confirmation?.status==='pending'&&expectedAt?'Nova previsão: '+expectedAt.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'Aguardando confirmação do responsável'
+        const responseDetail=confirmation?.status==='confirmed'&&confirmation.confirmedAt?'Confirmado em '+new Date(confirmation.confirmedAt).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):confirmation?.status==='pending'&&expectedAt?'O Power Automate deve perguntar novamente nesta previsão.':'A confirmação será única para toda a operação.'
         return <section className={isOpen?'operation-card open':'operation-card'} key={operation}>
           <button className="operation-head" onClick={()=>setExpanded(isOpen?null:operation)}>
             <div className="operation-name"><span className={fullyDone?'operation-dot green':late?'operation-dot red':'operation-dot amber'}/><div><b>{operation}</b><small>{rows.length} {rows.length===1?'tipo':'tipos'} de frota</small></div></div>
@@ -725,6 +802,12 @@ function ImportsPage(){
           </button>
 
           {isOpen&&<div className="operation-body">
+            <div className={'operation-response-state '+responseState}>
+              <div className="operation-response-icon">{confirmation?.status==='confirmed'?<CheckCircle2 size={17}/>:<Clock3 size={17}/>}</div>
+              <div><span>CONFIRMAÇÃO DAS IMPORTAÇÕES</span><b>{responseTitle}</b><small>{responseDetail}</small></div>
+              <strong>{responsible?.name??'Responsável não definido'}</strong>
+            </div>
+
             {rows.length>1&&<div className="operation-quick-actions">
               <span>AÇÕES RÁPIDAS</span>
               <button onClick={()=>confirmOperation(operation)}><CheckCircle2 size={14}/>Confirmar todos</button>
@@ -760,11 +843,11 @@ function ImportsPage(){
 
               <div className="control-group import-progress">
                 <span>STATUS DA IMPORTAÇÃO</span>
-                <button className={item.importStatus==='Concluída'?'cycle-button success':item.importStatus==='Em andamento'?'cycle-button info':'cycle-button neutral'} onClick={()=>cycleImportStatus(item)} disabled={item.importDecision!=='Realiza importação'}>
+                <button className={item.importStatus==='Concluída'?'cycle-button success':item.importStatus==='Em andamento'?'cycle-button info':'cycle-button neutral'} onClick={()=>cycleImportStatus(item)} disabled={item.importDecision!=='Realiza importação'||item.importStatus==='Concluída'}>
                   <b>{item.importDecision==='Realiza importação'?item.importStatus:'Não se aplica'}</b>
-                  {item.importDecision==='Realiza importação'&&<ChevronRight size={14}/>}
+                  {item.importDecision==='Realiza importação'&&item.importStatus!=='Concluída'&&<ChevronRight size={14}/>}
                 </button>
-                <small>{item.importDecision==='Realiza importação'?'Clique: não iniciada → em andamento → concluída':item.importDecision==='Não realiza importação'?'Não se aplica a esta frente':'Defina primeiro se haverá importação'}</small>
+                <small>{item.importStatus==='Concluída'?'Conclusão registrada pela confirmação do responsável':item.importDecision==='Realiza importação'?'Controle interno: não iniciada ↔ em andamento. A conclusão vem do responsável.':item.importDecision==='Não realiza importação'?'Não se aplica a esta frente':'Defina primeiro se haverá importação'}</small>
               </div>
             </article>)}
           </div>}
@@ -846,7 +929,7 @@ function ResponsiblesPage(){
 
   const operationsFor=(responsibleId:string)=>OPERATION_DEFINITIONS.filter(operation=>assignments[operation.id]===responsibleId)
 
-  return <PageIntro eyebrow="RESPONSÁVEIS" title="Responsáveis por operação" text="Cadastre colaboradores sem criar login no RIVORA e vincule cada frente ao responsável operacional.">
+  return <PageIntro eyebrow="RESPONSÁVEIS" title="Responsáveis por operação" text="Cadastre colaboradores sem criar login no RIVORA e vincule cada operação ao responsável que receberá a confirmação das importações.">
     <div className="responsible-summary">
       <div><span>CADASTRADOS</span><b>{responsibles.length}</b><small>{active.length} ativos</small></div>
       <div><span>OPERAÇÕES VINCULADAS</span><b>{assigned}</b><small>{OPERATION_DEFINITIONS.length-assigned} sem responsável</small></div>
