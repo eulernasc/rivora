@@ -2,21 +2,21 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } 
 import {
   Archive, Bell, CalendarDays, CheckCircle2, ChevronRight,
   Clock3, Download, FileCheck2, FileSpreadsheet, Gauge,
-  History, Inbox, LayoutDashboard, ListTodo, LogOut, Play, Search, Settings,
-  SlidersHorizontal, Workflow, XCircle,
+  History, Inbox, LayoutDashboard, ListTodo, LogOut, Mail, Play, Search, Settings,
+  SlidersHorizontal, UserPlus, Users, Workflow, XCircle,
 } from 'lucide-react'
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
 import { collection, doc, onSnapshot, serverTimestamp, Timestamp, writeBatch } from 'firebase/firestore'
 import './App.css'
 import { auth, db } from './firebase'
 
-type Page = 'Visão geral' | 'Relatórios' | 'Tarefas' | 'Automações' | 'Fechamentos e Importações' | 'Retornos' | 'Análises' | 'Histórico'
+type Page = 'Visão geral' | 'Relatórios' | 'Tarefas' | 'Automações' | 'Fechamentos e Importações' | 'Responsáveis' | 'Retornos' | 'Análises' | 'Histórico'
 type Task = { id:number; title:string; meta:string; done:boolean; due:string }
 type Closure = { op:string; period:string; records:number; status:string; next:string }
 
 const NAV_ITEMS:Array<[Page, typeof LayoutDashboard]> = [
   ['Visão geral',LayoutDashboard],['Relatórios',FileSpreadsheet],['Tarefas',ListTodo],
-  ['Automações',Workflow],['Fechamentos e Importações',Archive],['Retornos',Inbox],['Análises',Gauge],['Histórico',History],
+  ['Automações',Workflow],['Fechamentos e Importações',Archive],['Responsáveis',Users],['Retornos',Inbox],['Análises',Gauge],['Histórico',History],
 ]
 const TASK_SEED:Task[] = [
   {id:1,title:'Aguardar retorno corrigido — Juatuba',meta:'Retorno operacional',done:false,due:'Aguardando'},
@@ -34,12 +34,64 @@ const AUTOMATIONS = [
   {name:'Sincronização de tarefas',state:'Preparação',meta:'Todoist • integração pendente'},
 ]
 
+type FrontDefinition={key:string;operation:string;fleetType:string}
+type Responsible={id:string;name:string;email:string;active:boolean}
+type FrontAssignments=Record<string,string|null>
+
+const FRONT_DEFINITIONS:FrontDefinition[]=[
+  {key:'F01',operation:'Aracruz',fleetType:'Frota Pesada'},
+  {key:'F02',operation:'Aracruz',fleetType:'Máquinas'},
+  {key:'F03',operation:'Cenibra',fleetType:'Frota Pesada'},
+  {key:'F04',operation:'Cenibra',fleetType:'Máquinas'},
+  {key:'F05',operation:'Costa Rica',fleetType:'Frota Pesada'},
+  {key:'F06',operation:'Costa Rica',fleetType:'Frota Leve'},
+  {key:'F07',operation:'Alto Taquari',fleetType:'Frota Pesada'},
+  {key:'F08',operation:'Alto Taquari',fleetType:'Frota Leve'},
+  {key:'F09',operation:'Ribas',fleetType:'Frota Pesada'},
+  {key:'F10',operation:'Ribas',fleetType:'Máquinas'},
+  {key:'F11',operation:'Bracell',fleetType:'Frota Pesada'},
+  {key:'F12',operation:'Jundiaí',fleetType:'Frota Pesada'},
+  {key:'F13',operation:'Juatuba',fleetType:'Frota Pesada'},
+]
+
+function useResponsibilityData(){
+  const [responsibles,setResponsibles]=useState<Responsible[]>([])
+  const [assignments,setAssignments]=useState<FrontAssignments>({})
+  const [error,setError]=useState('')
+
+  useEffect(()=>onSnapshot(collection(db,'responsibles'),snapshot=>{
+    const next:Responsible[]=[]
+    snapshot.forEach(item=>{
+      const data=item.data()
+      if(typeof data.name==='string'&&typeof data.email==='string'&&typeof data.active==='boolean'){
+        next.push({id:item.id,name:data.name,email:data.email,active:data.active})
+      }
+    })
+    next.sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'))
+    setResponsibles(next)
+    setError('')
+  },()=>setError('Não foi possível carregar os responsáveis.')),[])
+
+  useEffect(()=>onSnapshot(collection(db,'frontAssignments'),snapshot=>{
+    const next:FrontAssignments={}
+    snapshot.forEach(item=>{
+      const value=item.data().responsibleId
+      next[item.id]=typeof value==='string'&&value?value:null
+    })
+    setAssignments(next)
+    setError('')
+  },()=>setError('Não foi possível carregar os vínculos das operações.')),[])
+
+  return {responsibles,assignments,error}
+}
+
 const SEARCH_ITEMS:Array<{label:string;detail:string;page:Page}> = [
   {label:'Visão geral',detail:'Centro de comando e estado operacional',page:'Visão geral'},
   {label:'Relatórios',detail:'Juatuba, Jundiaí, períodos, envios e retornos',page:'Relatórios'},
   {label:'Tarefas',detail:'Pendências e próximas ações',page:'Tarefas'},
   {label:'Automações',detail:'Fluxos, testes e monitoramento',page:'Automações'},
   {label:'Fechamentos e Importações',detail:'Confirmações de fechamento e controle das importações por operação',page:'Fechamentos e Importações'},
+  {label:'Responsáveis',detail:'Cadastro de colaboradores e vínculo com operações',page:'Responsáveis'},
   {label:'Retornos',detail:'Conversas e anexos corrigidos',page:'Retornos'},
   {label:'Análises',detail:'Indicadores, divergências e CPH',page:'Análises'},
   {label:'Histórico',detail:'Registro de ações e mudanças',page:'Histórico'},
@@ -158,7 +210,7 @@ function DashboardApp(){
     <aside className="sidebar">
       <div className="brand"><div className="brand-icon-wrap"><img src={`${import.meta.env.BASE_URL}rivora-mark.svg`} className="brand-mark" alt=""/><i className="brand-scan"/></div><div><strong>RIVORA</strong><span>Operation Automation System</span></div></div>
       <nav className="nav"><small>NAVEGAÇÃO</small>{NAV_ITEMS.map(([label,Icon])=><button key={label} className={page===label?'nav-item active':'nav-item'} onClick={()=>setPage(label)}><Icon size={18} strokeWidth={1.7}/><span>{label}</span>{label==='Tarefas'&&<b>{tasks.filter(t=>!t.done).length}</b>}</button>)}</nav>
-      <div className="side-foot"><div className="mode-card"><i/><div><strong>Modo local</strong><span>Pronto para integrações</span></div></div><button className="nav-item"><Settings size={18}/><span>Configurações</span></button></div>
+      <div className="side-foot"><div className="mode-card"><i/><div><strong>Firebase protegido</strong><span>Sincronização autenticada</span></div></div><button className="nav-item"><Settings size={18}/><span>Configurações</span></button></div>
     </aside>
     <main className="main">
       <header className="topbar">
@@ -196,6 +248,7 @@ function DashboardApp(){
         {page==='Tarefas'&&<TasksPage tasks={tasks} toggleTask={toggleTask} addTask={addTask}/>} 
         {page==='Automações'&&<AutomationsPage/>}
         {page==='Fechamentos e Importações'&&<ImportsPage/>}
+        {page==='Responsáveis'&&<ResponsiblesPage/>}
         {page==='Retornos'&&<ReturnsPage setPage={setPage}/>} 
         {page==='Análises'&&<AnalyticsPage/>}
         {page==='Histórico'&&<HistoryPage/>}
@@ -412,21 +465,14 @@ function ImportsPage(){
     source:CloudSource
   }
 
-  const initial:OperationControl[]=[
-    {key:'F01',operation:'Aracruz',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
-    {key:'F02',operation:'Aracruz',fleetType:'Máquinas',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
-    {key:'F03',operation:'Cenibra',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
-    {key:'F04',operation:'Cenibra',fleetType:'Máquinas',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
-    {key:'F05',operation:'Costa Rica',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
-    {key:'F06',operation:'Costa Rica',fleetType:'Frota Leve',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
-    {key:'F07',operation:'Alto Taquari',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
-    {key:'F08',operation:'Alto Taquari',fleetType:'Frota Leve',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
-    {key:'F09',operation:'Ribas',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
-    {key:'F10',operation:'Ribas',fleetType:'Máquinas',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
-    {key:'F11',operation:'Bracell',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
-    {key:'F12',operation:'Jundiaí',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
-    {key:'F13',operation:'Juatuba',fleetType:'Frota Pesada',closureStatus:'Aguardando confirmação',importDecision:'Pendente',importStatus:'Não iniciada',confirmedAt:null,source:'manual'},
-  ]
+  const initial:OperationControl[]=FRONT_DEFINITIONS.map(front=>({
+    ...front,
+    closureStatus:'Aguardando confirmação',
+    importDecision:'Pendente',
+    importStatus:'Não iniciada',
+    confirmedAt:null,
+    source:'manual',
+  }))
 
   const thirdBusinessDayDeadline=useMemo(()=>{
     const now=new Date()
@@ -472,6 +518,11 @@ function ImportsPage(){
 
   const [items,setItems]=useState<OperationControl[]>(localSeed)
   const [expanded,setExpanded]=useState<string|null>('Juatuba')
+  const {responsibles,assignments}=useResponsibilityData()
+  const responsibleFor=(frontId:string)=>{
+    const responsibleId=assignments[frontId]
+    return responsibleId?responsibles.find(item=>item.id===responsibleId):undefined
+  }
   const [syncState,setSyncState]=useState<'connecting'|'migrating'|'synced'|'error'>('connecting')
   const [syncMessage,setSyncMessage]=useState('Conectando ao Firebase protegido...')
   const [cloudReady,setCloudReady]=useState(false)
@@ -671,7 +722,7 @@ function ImportsPage(){
             {rows.map(item=><article className="fleet-control-row" key={item.key}>
               <div className="fleet-main">
                 <span className="fleet-icon"><Archive size={17}/></span>
-                <div><b>{item.fleetType}</b><small>{sourceLabel(item.source)}</small></div>
+                <div><b>{item.fleetType}</b><small>{responsibleFor(item.key)?.name?'Responsável: '+responsibleFor(item.key)?.name+' • '+sourceLabel(item.source):'Responsável não definido • '+sourceLabel(item.source)}</small></div>
               </div>
 
               <div className="control-group">
@@ -706,6 +757,135 @@ function ImportsPage(){
           </div>}
         </section>
       })}
+    </div>
+  </PageIntro>
+}
+
+function ResponsiblesPage(){
+  const {responsibles,assignments,error}=useResponsibilityData()
+  const [name,setName]=useState('')
+  const [email,setEmail]=useState('')
+  const [saving,setSaving]=useState(false)
+  const [message,setMessage]=useState('')
+
+  const active=responsibles.filter(item=>item.active)
+  const assigned=FRONT_DEFINITIONS.filter(front=>assignments[front.key]).length
+
+  const createResponsible=async(event:FormEvent)=>{
+    event.preventDefault()
+    const cleanName=name.trim()
+    const cleanEmail=email.trim().toLowerCase()
+    if(!cleanName||!cleanEmail) return
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)){
+      setMessage('Informe um e-mail válido.')
+      return
+    }
+    setSaving(true)
+    setMessage('')
+    try{
+      const ref=doc(collection(db,'responsibles'))
+      const batch=writeBatch(db)
+      batch.set(ref,{
+        name:cleanName,
+        email:cleanEmail,
+        active:true,
+        createdAt:serverTimestamp(),
+        updatedAt:serverTimestamp(),
+      })
+      await batch.commit()
+      setName('')
+      setEmail('')
+      setMessage('Responsável cadastrado.')
+    }catch{
+      setMessage('Não foi possível cadastrar. Verifique as regras do Firestore.')
+    }finally{
+      setSaving(false)
+    }
+  }
+
+  const toggleResponsible=async(item:Responsible)=>{
+    setMessage('')
+    try{
+      const batch=writeBatch(db)
+      batch.set(doc(db,'responsibles',item.id),{
+        active:!item.active,
+        updatedAt:serverTimestamp(),
+      },{merge:true})
+      await batch.commit()
+    }catch{
+      setMessage('Não foi possível alterar a situação do responsável.')
+    }
+  }
+
+  const assignFront=async(frontId:string,responsibleId:string)=>{
+    setMessage('')
+    try{
+      const batch=writeBatch(db)
+      batch.set(doc(db,'frontAssignments',frontId),{
+        responsibleId:responsibleId||null,
+        updatedAt:serverTimestamp(),
+      })
+      await batch.commit()
+    }catch{
+      setMessage('Não foi possível atualizar o vínculo da operação.')
+    }
+  }
+
+  const frontsFor=(responsibleId:string)=>FRONT_DEFINITIONS.filter(front=>assignments[front.key]===responsibleId)
+
+  return <PageIntro eyebrow="RESPONSÁVEIS" title="Responsáveis por operação" text="Cadastre colaboradores sem criar login no RIVORA e vincule cada frente ao responsável operacional.">
+    <div className="responsible-summary">
+      <div><span>CADASTRADOS</span><b>{responsibles.length}</b><small>{active.length} ativos</small></div>
+      <div><span>FRENTES VINCULADAS</span><b>{assigned}</b><small>{FRONT_DEFINITIONS.length-assigned} sem responsável</small></div>
+      <div><span>ACESSO AO RIVORA</span><b>1 admin</b><small>Colaboradores não recebem usuário ou senha</small></div>
+    </div>
+
+    <form className="responsible-form" onSubmit={createResponsible}>
+      <div className="responsible-form-title"><UserPlus size={18}/><div><b>Novo responsável</b><small>Nome e e-mail ficam somente no Firestore autenticado.</small></div></div>
+      <label><span>NOME</span><input value={name} onChange={e=>setName(e.target.value)} placeholder="Nome do colaborador" maxLength={120} required/></label>
+      <label><span>E-MAIL</span><div className="responsible-email-field"><Mail size={14}/><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="colaborador@empresa.com.br" maxLength={254} required/></div></label>
+      <button type="submit" disabled={saving}>{saving?'Salvando...':'Cadastrar'}</button>
+    </form>
+
+    {(message||error)&&<div className={error?'responsible-message error':'responsible-message'}>{error||message}</div>}
+
+    <section className="responsible-grid">
+      <div className="responsible-panel">
+        <header><div><span>COLABORADORES</span><h3>Responsáveis cadastrados</h3></div><small>{responsibles.length} registros</small></header>
+        <div className="responsible-list">
+          {responsibles.length?responsibles.map(item=>{
+            const fronts=frontsFor(item.id)
+            return <article key={item.id} className={item.active?'responsible-person':'responsible-person inactive'}>
+              <div className="responsible-avatar">{item.name.split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase()}</div>
+              <div className="responsible-person-copy"><b>{item.name}</b><span>{item.email}</span><small>{fronts.length?fronts.map(front=>front.operation+' • '+front.fleetType).join(' · '):'Nenhuma frente vinculada'}</small></div>
+              <button onClick={()=>void toggleResponsible(item)}>{item.active?'Ativo':'Inativo'}</button>
+            </article>
+          }):<div className="responsible-empty">Nenhum responsável cadastrado ainda.</div>}
+        </div>
+      </div>
+
+      <div className="responsible-panel">
+        <header><div><span>VÍNCULOS</span><h3>Frentes e responsáveis</h3></div><small>1 responsável por frente</small></header>
+        <div className="assignment-list">
+          {FRONT_DEFINITIONS.map(front=>{
+            const currentId=assignments[front.key]??''
+            const current=responsibles.find(item=>item.id===currentId)
+            return <article key={front.key}>
+              <div className="assignment-front"><span>{front.key}</span><div><b>{front.operation}</b><small>{front.fleetType}</small></div></div>
+              <select value={currentId} onChange={e=>void assignFront(front.key,e.target.value)}>
+                <option value="">Sem responsável</option>
+                {active.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
+                {current&&!current.active&&<option value={current.id}>{current.name} (inativo)</option>}
+              </select>
+            </article>
+          })}
+        </div>
+      </div>
+    </section>
+
+    <div className="responsible-privacy-note">
+      <CheckCircle2 size={15}/>
+      <span>O responsável é cadastro operacional. Ele não recebe login do RIVORA. O envio de confirmação continua pelo Power Automate/Teams.</span>
     </div>
   </PageIntro>
 }
