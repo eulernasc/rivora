@@ -109,6 +109,66 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    function validResponsibleDocument(isCreate) {
+      return request.resource.data.keys().hasOnly([
+          'name',
+          'email',
+          'active',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'name',
+          'email',
+          'active',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.email is string
+        && request.resource.data.email.size() > 3
+        && request.resource.data.email.size() <= 254
+        && request.resource.data.active is bool
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && (isCreate || request.resource.data.createdAt == resource.data.createdAt);
+    }
+
+    function validAssignment() {
+      return request.resource.data.keys().hasOnly([
+          'responsibleId',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'responsibleId',
+          'updatedAt'
+        ])
+        && (
+          request.resource.data.responsibleId == null
+          || request.resource.data.responsibleId is string
+        )
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    match /responsibles/{responsibleId} {
+      allow list: if roleIs('admin');
+      allow get: if roleIs('admin');
+      allow create: if roleIs('admin') && validResponsibleDocument(true);
+      allow update: if roleIs('admin') && validResponsibleDocument(false);
+      allow delete: if false;
+    }
+
+    match /frontAssignments/{frontId} {
+      allow list: if roleIs('admin');
+      allow get: if roleIs('admin') && validFront(frontId);
+      allow create, update: if roleIs('admin')
+        && validFront(frontId)
+        && validAssignment();
+      allow delete: if false;
+    }
+
     match /closingCycles/{cycle}/fronts/{frontId} {
       // Collection listeners are list operations. Firestore rules are not filters,
       // so the list rule cannot depend on each possible document ID matching F01..F13.
