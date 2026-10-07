@@ -30,6 +30,49 @@ service cloud.firestore {
       return operationId.matches('^OP0[1-8]$');
     }
 
+    // Teams bridge reads only responsible records linked to a supported operation.
+    function assignedResponsible(operationId, responsibleId) {
+      let assignment = /databases/$(database)/documents/operationAssignments/$(operationId);
+      return exists(assignment) && get(assignment).data.responsibleId == responsibleId;
+    }
+
+    function linkedResponsible(responsibleId) {
+      return assignedResponsible('OP01', responsibleId)
+        || assignedResponsible('OP02', responsibleId)
+        || assignedResponsible('OP03', responsibleId)
+        || assignedResponsible('OP04', responsibleId)
+        || assignedResponsible('OP05', responsibleId)
+        || assignedResponsible('OP06', responsibleId)
+        || assignedResponsible('OP07', responsibleId)
+        || assignedResponsible('OP08', responsibleId);
+    }
+
+    // notifications/{operationId}: UUID, responsible document ID, delivery state,
+    // askedAt and updatedAt timestamps. No email or credential is stored here.
+    function validNotification() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['requestId', 'responsibleId', 'status', 'askedAt', 'updatedAt'])
+        && d.keys().hasAll(['requestId', 'responsibleId', 'status', 'askedAt', 'updatedAt'])
+        && d.requestId is string && d.requestId.size() == 36
+        && d.requestId.matches('^[a-f0-9-]{36}$')
+        && d.responsibleId is string && d.responsibleId.size() > 0 && d.responsibleId.size() <= 128
+        && d.responsibleId.matches('^[A-Za-z0-9_-]+$')
+        && d.status in ['sending', 'waiting', 'answered', 'failed']
+        && d.askedAt is timestamp && d.updatedAt is timestamp
+        && d.updatedAt >= request.time - duration.value(5, 'm')
+        && d.updatedAt <= request.time + duration.value(1, 'm');
+    }
+
+    function validNotificationTransition() {
+      let d = request.resource.data;
+      let old = resource.data;
+      return (old.status == 'answered' && d.status == 'sending' && d.requestId != old.requestId)
+        || (d.requestId == old.requestId && d.responsibleId == old.responsibleId
+          && d.askedAt == old.askedAt
+          && ((old.status == 'sending' && d.status in ['waiting', 'answered', 'failed'])
+            || (old.status == 'waiting' && d.status == 'answered')));
+    }
+
     function validClosureStatus(value) {
       return value in ['Aguardando confirmação', 'Confirmado', 'Atrasado'];
     }
@@ -195,7 +238,8 @@ service cloud.firestore {
     }
 
     match /responsibles/{responsibleId} {
-      allow list, get: if roleIs('admin');
+      allow list: if roleIs('admin');
+      allow get: if roleIs('admin') || (roleIs('bridge') && linkedResponsible(responsibleId));
       allow create: if roleIs('admin') && validResponsibleDocument(true);
       allow update: if roleIs('admin') && validResponsibleDocument(false);
       allow delete: if false;
@@ -203,7 +247,7 @@ service cloud.firestore {
 
     match /operationAssignments/{operationId} {
       allow list: if roleIs('admin');
-      allow get: if roleIs('admin') && validOperation(operationId);
+      allow get: if (roleIs('admin') || roleIs('bridge')) && validOperation(operationId);
       allow create, update: if roleIs('admin')
         && validOperation(operationId)
         && validAssignment();
@@ -212,7 +256,7 @@ service cloud.firestore {
 
     match /closingCycles/{cycle}/operations/{operationId} {
       allow list: if roleIs('admin') && validCycle(cycle);
-      allow get: if roleIs('admin') && validCycle(cycle) && validOperation(operationId);
+      allow get: if (roleIs('admin') || roleIs('bridge')) && validCycle(cycle) && validOperation(operationId);
       allow create, update: if roleIs('bridge')
         && validCycle(cycle)
         && validOperation(operationId)
@@ -222,7 +266,7 @@ service cloud.firestore {
 
     match /closingCycles/{cycle}/fronts/{frontId} {
       allow list: if roleIs('admin') && validCycle(cycle);
-      allow get: if roleIs('admin') && validCycle(cycle) && validFront(frontId);
+      allow get: if (roleIs('admin') || roleIs('bridge')) && validCycle(cycle) && validFront(frontId);
 
       allow create: if validCycle(cycle)
         && validFront(frontId)
@@ -238,6 +282,16 @@ service cloud.firestore {
           || (roleIs('bridge') && validBridgeFrontUpdate())
         );
 
+      allow delete: if false;
+    }
+
+    match /closingCycles/{cycle}/notifications/{operationId} {
+      allow get: if (roleIs('admin') || roleIs('bridge')) && validCycle(cycle) && validOperation(operationId);
+      allow list: if roleIs('admin') && validCycle(cycle);
+      allow create: if roleIs('bridge') && validCycle(cycle) && validOperation(operationId)
+        && validNotification() && request.resource.data.status == 'sending';
+      allow update: if roleIs('bridge') && validCycle(cycle) && validOperation(operationId)
+        && validNotification() && validNotificationTransition();
       allow delete: if false;
     }
 

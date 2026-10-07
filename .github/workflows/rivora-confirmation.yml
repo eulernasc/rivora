@@ -6,6 +6,9 @@ on:
 
 permissions:
   contents: read
+concurrency:
+  group: rivora-confirmation-bridge
+  cancel-in-progress: false
 
 jobs:
   update-confirmation:
@@ -16,7 +19,14 @@ jobs:
         with:
           node-version: 22
       - name: Apply confirmation to Firestore
+        if: ${{ !github.event.client_payload.requestId }}
         run: node scripts/rivora-bridge.mjs
+        env:
+          RIVORA_BRIDGE_EMAIL: ${{ secrets.RIVORA_BRIDGE_EMAIL }}
+          RIVORA_BRIDGE_PASSWORD: ${{ secrets.RIVORA_BRIDGE_PASSWORD }}
+      - name: Apply validated Teams response to Firestore
+        if: ${{ github.event.client_payload.requestId }}
+        run: node scripts/rivora-teams.mjs respond
         env:
           RIVORA_BRIDGE_EMAIL: ${{ secrets.RIVORA_BRIDGE_EMAIL }}
           RIVORA_BRIDGE_PASSWORD: ${{ secrets.RIVORA_BRIDGE_PASSWORD }}

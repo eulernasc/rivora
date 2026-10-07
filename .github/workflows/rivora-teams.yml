@@ -1,0 +1,35 @@
+name: RIVORA Teams cards
+on:
+  workflow_dispatch:
+    inputs:
+      operationId:
+        description: Operation enabled in rivora-teams-config.json
+        required: true
+        default: OP07
+      cycle:
+        description: Closing cycle
+        required: true
+        default: '2099-12'
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+permissions:
+  contents: read
+concurrency:
+  group: rivora-confirmation-bridge
+  cancel-in-progress: false
+jobs:
+  send-card:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Request or remind enabled operations
+        env:
+          RIVORA_BRIDGE_EMAIL: ${{ secrets.RIVORA_BRIDGE_EMAIL }}
+          RIVORA_BRIDGE_PASSWORD: ${{ secrets.RIVORA_BRIDGE_PASSWORD }}
+          RIVORA_TEAMS_WEBHOOK_URL: ${{ secrets.RIVORA_TEAMS_WEBHOOK_URL }}
+          BRIDGE_MODE: ${{ github.event_name == 'schedule' && 'remind' || 'request' }}
+        run: node scripts/rivora-teams.mjs "$BRIDGE_MODE"
