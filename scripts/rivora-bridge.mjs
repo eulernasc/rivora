@@ -79,8 +79,10 @@ async function patchDocument(path,fields,fieldNames){
 }
 
 async function concludeFront(frontId){
+  const path=`closingCycles/${encodeURIComponent(cycle)}/fronts/${encodeURIComponent(frontId)}`
+
   await patchDocument(
-    `closingCycles/${encodeURIComponent(cycle)}/fronts/${encodeURIComponent(frontId)}`,
+    path,
     {
       importStatus:{stringValue:'Concluída'},
       source:{stringValue:'power_automate'},
@@ -88,6 +90,24 @@ async function concludeFront(frontId){
     },
     ['importStatus','source','updatedAt'],
   )
+
+  try{
+    await patchDocument(
+      path,
+      {
+        closureStatus:{stringValue:'Confirmado'},
+        confirmedAt:{timestampValue:now},
+        source:{stringValue:'power_automate'},
+        updatedAt:{timestampValue:now},
+      },
+      ['closureStatus','confirmedAt','source','updatedAt'],
+    )
+  }catch(error){
+    console.warn(
+      'Import concluded, but closure confirmation was not synchronized. Deploy the updated Firestore rules.',
+      error instanceof Error?error.message:String(error),
+    )
+  }
 }
 
 async function saveOperationState(){
