@@ -94,13 +94,25 @@ service cloud.firestore {
 
     function validBridgeFrontUpdate() {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'closureStatus',
           'importStatus',
+          'confirmedAt',
           'source',
           'updatedAt'
         ])
         && request.resource.data.importStatus == 'Concluída'
         && request.resource.data.source == 'power_automate'
-        && request.resource.data.updatedAt is timestamp;
+        && request.resource.data.updatedAt is timestamp
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'closureStatus',
+            'confirmedAt'
+          ])
+          || (
+            request.resource.data.closureStatus == 'Confirmado'
+            && request.resource.data.confirmedAt is timestamp
+          )
+        );
     }
 
     function validResponsibleDocument(isCreate) {
