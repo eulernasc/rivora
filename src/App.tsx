@@ -756,7 +756,7 @@ function ImportsPage(){
       <div><span>VÃO IMPORTAR</span><b>{willImport}</b><small>{importPending} importações pendentes</small></div>
       <div className={'sync-card '+syncState}>
         <span>FIREBASE</span>
-        <b>{syncState==='synced'?'Sincronizado':syncState==='migrating'?'Migrando...':syncState==='error'?'Aguardando permissão':'Conectando...'}</b>
+        <b>{syncState==='synced'?'Sincronizado':syncState==='error'?'Aguardando permissão':'Conectando...'}</b>
         <small>{syncMessage}</small>
       </div>
     </div>
