@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import {
   Archive, Bell, CalendarDays, CheckCircle2, ChevronRight,
   Clock3, Download, FileCheck2, FileSpreadsheet, Gauge,
@@ -575,9 +575,10 @@ function ImportsPage(){
   const deadlineLabel=thirdBusinessDayDeadline.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})
   const currentCycle=useMemo(currentCycleId,[])
   const cycleCollection=useMemo(()=>collection(db,'closingCycles',currentCycle,'fronts'),[currentCycle])
+  const cycleStorageKey=`rivora.operationControl.${currentCycle}`
 
   const localSeed=():OperationControl[]=>{
-    const saved=localStorage.getItem('rivora.operationControl')
+    const saved=localStorage.getItem(cycleStorageKey)
     if(!saved) return initial
     try{
       const parsed=JSON.parse(saved) as Array<Omit<Partial<OperationControl>,'importDecision'|'source'> & {importDecision?:ImportDecision|'Sim'|'Não';source?:string}>
@@ -608,10 +609,9 @@ function ImportsPage(){
     const responsibleId=operation?assignments[operation.id]:null
     return responsibleId?responsibles.find(item=>item.id===responsibleId):undefined
   }
-  const [syncState,setSyncState]=useState<'connecting'|'migrating'|'synced'|'error'>('connecting')
+  const [syncState,setSyncState]=useState<'connecting'|'synced'|'error'>('connecting')
   const [syncMessage,setSyncMessage]=useState('Conectando ao Firebase protegido...')
   const [cloudReady,setCloudReady]=useState(false)
-  const migrationAttempted=useRef(false)
 
   const sourceLabel=(source:CloudSource)=>source==='power_automate'?'Confirmação automática':source==='migration'?'Migrado do dispositivo':'RIVORA'
   const formatConfirmedAt=(value:string|null)=>{
@@ -634,25 +634,9 @@ function ImportsPage(){
   })
 
   useEffect(()=>{
-    const unsubscribe=onSnapshot(cycleCollection,async snapshot=>{
+    const unsubscribe=onSnapshot(cycleCollection,snapshot=>{
       setCloudReady(true)
-
-      if(snapshot.empty&&!migrationAttempted.current){
-        migrationAttempted.current=true
-        setSyncState('migrating')
-        setSyncMessage('Migrando uma única vez os estados locais para o ciclo atual...')
-        try{
-          const batch=writeBatch(db)
-          for(const item of items){
-            batch.set(doc(cycleCollection,item.key),cloudData(item,'migration'))
-          }
-          await batch.commit()
-        }catch{
-          setSyncState('error')
-          setSyncMessage('O Firebase está protegido, mas este usuário ainda não recebeu permissão no Firestore.')
-        }
-        return
-      }
+      const isNewCycle=snapshot.empty
 
       const remote=new Map<string,Record<string,unknown>>()
       snapshot.forEach(snapshotDoc=>remote.set(snapshotDoc.id,snapshotDoc.data()))
@@ -672,9 +656,13 @@ function ImportsPage(){
         }
       })
       setItems(next)
-      localStorage.setItem('rivora.operationControl',JSON.stringify(next))
+      localStorage.setItem(cycleStorageKey,JSON.stringify(next))
       setSyncState('synced')
-      setSyncMessage(`Firebase sincronizado em tempo real • ciclo ${currentCycle}`)
+      setSyncMessage(
+        isNewCycle
+          ? `Novo ciclo ${currentCycle} iniciado sem herdar os estados do mês anterior.`
+          : `Firebase sincronizado em tempo real • ciclo ${currentCycle}`,
+      )
     },()=>{
       setCloudReady(false)
       setSyncState('error')
@@ -682,12 +670,12 @@ function ImportsPage(){
     })
 
     return unsubscribe
-  },[cycleCollection,currentCycle])
+  },[cycleCollection,currentCycle,cycleStorageKey])
 
   const persist=async(next:OperationControl[])=>{
     const previous=items
     setItems(next)
-    localStorage.setItem('rivora.operationControl',JSON.stringify(next))
+    localStorage.setItem(cycleStorageKey,JSON.stringify(next))
     if(!cloudReady) return
 
     const changed=next.filter((item,index)=>{
