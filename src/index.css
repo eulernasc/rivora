@@ -21,6 +21,24 @@
   --cyan: #36d8ee;
   --green: #38d7a3;
   --amber: #ffb347;
+  color-scheme: dark;
+}
+
+html[data-theme="light"]{
+  --bg:#eef4f9;
+  --surface:#ffffff;
+  --surface-2:#f5f9fc;
+  --surface-3:#eaf3f9;
+  --line:rgba(39,82,116,.16);
+  --line-strong:rgba(27,111,165,.30);
+  --muted:#5f7488;
+  --muted-2:#75899a;
+  --text:#17324a;
+  --blue:#0b86d5;
+  --cyan:#0baec9;
+  --green:#159b73;
+  --amber:#d98716;
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -79,3 +97,19 @@ html::-webkit-scrollbar-corner,
 body::-webkit-scrollbar-corner{
   background:#0b1928;
 }
+
+
+html[data-theme="light"]{
+  scrollbar-color:#9bb6ca #e7eff5;
+}
+html[data-theme="light"]::-webkit-scrollbar-track,
+html[data-theme="light"] body::-webkit-scrollbar-track{background:#e7eff5}
+html[data-theme="light"]::-webkit-scrollbar-thumb,
+html[data-theme="light"] body::-webkit-scrollbar-thumb{
+  background:#9bb6ca;
+  border-color:#e7eff5;
+}
+html[data-theme="light"]::-webkit-scrollbar-thumb:hover,
+html[data-theme="light"] body::-webkit-scrollbar-thumb:hover{background:#799db8}
+html[data-theme="light"]::-webkit-scrollbar-corner,
+html[data-theme="light"] body::-webkit-scrollbar-corner{background:#e7eff5}

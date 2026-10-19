@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 're
 import {
   Archive, Bell, CalendarDays, CheckCircle2, ChevronRight,
   Clock3, Download, FileCheck2, FileSpreadsheet, Gauge,
-  History, Inbox, LayoutDashboard, ListTodo, LogOut, Mail, Play, Search, Settings,
-  SlidersHorizontal, UserPlus, Users, Workflow, XCircle,
+  History, Inbox, LayoutDashboard, ListTodo, LogOut, Mail, Moon, Play, Search, Settings,
+  SlidersHorizontal, Sun, UserPlus, Users, Workflow, XCircle,
 } from 'lucide-react'
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
 import { collection, doc, onSnapshot, serverTimestamp, Timestamp, writeBatch } from 'firebase/firestore'
@@ -12,6 +12,7 @@ import { auth, db } from './firebase'
 import CphLightPage from './CphLightPage'
 
 type Page = 'Visão geral' | 'Relatórios' | 'Tarefas' | 'Automações' | 'Fechamentos e Importações' | 'Responsáveis' | 'Retornos' | 'Análises' | 'CPH Frota Leve' | 'Histórico'
+type Theme='dark'|'light'
 type Task = { id:number; title:string; meta:string; done:boolean; due:string }
 type Closure = { op:string; period:string; records:number; status:string; next:string }
 
@@ -158,6 +159,16 @@ const SEARCH_ITEMS:Array<{label:string;detail:string;page:Page}> = [
 function App(){
   const [user,setUser]=useState<User|null>(null)
   const [authReady,setAuthReady]=useState(false)
+  const [theme,setTheme]=useState<Theme>(()=>{
+    const saved=localStorage.getItem('rivora.theme')
+    return saved==='light'?'light':'dark'
+  })
+
+  useEffect(()=>{
+    document.documentElement.dataset.theme=theme
+    document.documentElement.style.colorScheme=theme
+    localStorage.setItem('rivora.theme',theme)
+  },[theme])
 
   useEffect(()=>onAuthStateChanged(auth,nextUser=>{
     setUser(nextUser)
@@ -166,7 +177,7 @@ function App(){
 
   if(!authReady) return <div className="auth-shell"><div className="auth-card auth-loading"><img src={`${import.meta.env.BASE_URL}rivora-mark.svg`} alt=""/><b>Carregando RIVORA...</b></div></div>
   if(!user) return <LoginPage/>
-  return <DashboardApp/>
+  return <DashboardApp theme={theme} setTheme={setTheme}/>
 }
 
 function LoginPage(){
@@ -203,7 +214,7 @@ function LoginPage(){
   </div>
 }
 
-function DashboardApp(){
+function DashboardApp({theme,setTheme}:{theme:Theme;setTheme:(theme:Theme)=>void}){
   const [page,setPage]=useState<Page>('Visão geral')
   const [query,setQuery]=useState('')
   const [searchOpen,setSearchOpen]=useState(false)
@@ -274,6 +285,16 @@ function DashboardApp(){
         <div className="top-actions">
           <label className="search-box"><Search size={16}/><input id="rivora-global-search" value={query} onFocus={()=>setSearchOpen(true)} onChange={e=>{setQuery(e.target.value);setSearchOpen(true)}} onKeyDown={e=>{if(e.key==='Enter'&&searchResults[0])navigateFromSearch(searchResults[0].page)}} placeholder="Buscar no Rivora"/><kbd>CTRL K</kbd></label>
           <button className="install-button" onClick={installApp}><Download size={15}/>Instalar</button>
+          <button
+            className="theme-toggle"
+            aria-label={theme==='dark'?'Mudar para tema claro':'Mudar para tema escuro'}
+            title={theme==='dark'?'Mudar para tema claro':'Mudar para tema escuro'}
+            aria-pressed={theme==='light'}
+            onClick={()=>setTheme(theme==='dark'?'light':'dark')}
+          >
+            {theme==='dark'?<Moon size={16}/>:<Sun size={16}/>}
+            <span>{theme==='dark'?'Escuro':'Claro'}</span>
+          </button>
           <button className={notificationsOpen?'icon-button active':'icon-button'} aria-label="Notificações" onClick={()=>{setNotificationsOpen(v=>!v);setSearchOpen(false)}}><Bell size={18}/><i className="notification-dot"/></button>
           <div className="user-chip"><span>RV</span><div><strong>Conta autenticada</strong><small>Acesso protegido</small></div></div>
           <button className="logout-button" onClick={()=>void signOut(auth)} title="Sair"><LogOut size={16}/></button>

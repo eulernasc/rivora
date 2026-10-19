@@ -193,3 +193,106 @@
   .cphl-action{width:100%}
   .cphl-table-top{align-items:flex-start;flex-direction:column}
 }
+
+
+/* CPH Frota Leve — visual refresh + light theme */
+.cphl-upload-card{
+  background:linear-gradient(155deg,#102338,#0c1b2c);
+  border-color:rgba(125,181,221,.24);
+}
+.cphl-upload-copy span{font-size:9.5px}
+.cphl-upload-copy b{font-size:15px}
+.cphl-upload-copy small{font-size:11px;color:#9ab0c2}
+.cphl-file-button{min-height:39px;font-size:10.5px}
+.cphl-file-name{font-size:10px;color:#8ea6ba}
+.cphl-kpi{
+  min-height:104px;
+  background:linear-gradient(150deg,#11263b,#0d1e31);
+  border-color:rgba(125,181,221,.24);
+}
+.cphl-kpi span{font-size:9.5px}
+.cphl-kpi b{font-size:28px}
+.cphl-kpi small{font-size:10px;color:#8da4b8}
+.cphl-rule-note{font-size:10.5px;color:#a9bfce}
+.cphl-efficiency-copy b{font-size:12.5px}
+.cphl-efficiency-copy span{font-size:10px}
+.cphl-efficiency-config label>span,.cphl-field>span{font-size:9px}
+.cphl-efficiency-config input,.cphl-field input,.cphl-field select{font-size:11px}
+.cphl-efficiency-config button,.cphl-action{font-size:10.5px}
+.cphl-toolbar{background:#0d1f32;border-color:rgba(125,181,221,.24)}
+.cphl-table-top>div b{font-size:13px}
+.cphl-table-top>div small{font-size:10px}
+.cphl-table th{font-size:9.5px}
+.cphl-table td{font-size:11px;padding:11px 10px}
+.cphl-status{font-size:9.5px;min-height:26px}
+.cphl-review-button{font-size:9.5px}
+.cphl-legend{font-size:9.5px}
+
+/* Light CPH */
+html[data-theme="light"] .cphl-upload-card,
+html[data-theme="light"] .cphl-kpi,
+html[data-theme="light"] .cphl-table-panel{
+  background:linear-gradient(155deg,#ffffff,#f6fafc);
+  border-color:rgba(44,88,122,.15);
+  box-shadow:0 10px 26px rgba(43,78,104,.07);
+}
+html[data-theme="light"] .cphl-upload-card.history{border-color:rgba(21,155,115,.20)}
+html[data-theme="light"] .cphl-upload-icon{background:#e6f3fb;color:#0b78b4}
+html[data-theme="light"] .cphl-upload-card.history .cphl-upload-icon{background:#e9f8f2;color:#15805f}
+html[data-theme="light"] .cphl-upload-copy b,
+html[data-theme="light"] .cphl-kpi b,
+html[data-theme="light"] .cphl-table-top>div b{color:#24455e}
+html[data-theme="light"] .cphl-upload-copy span,
+html[data-theme="light"] .cphl-kpi span{color:#6f8699}
+html[data-theme="light"] .cphl-upload-copy small,
+html[data-theme="light"] .cphl-kpi small,
+html[data-theme="light"] .cphl-file-name,
+html[data-theme="light"] .cphl-table-top>div small{color:#6d8396}
+html[data-theme="light"] .cphl-file-button{
+  background:#eaf5fb;
+  color:#0b6fa8;
+  border-color:rgba(11,134,213,.24);
+}
+html[data-theme="light"] .cphl-efficiency-config{
+  background:linear-gradient(150deg,#fffaf0,#f7fbfd);
+  border-color:rgba(217,135,22,.20);
+}
+html[data-theme="light"] .cphl-efficiency-copy b{color:#5b4725}
+html[data-theme="light"] .cphl-efficiency-copy span{color:#7c6d54}
+html[data-theme="light"] .cphl-efficiency-config input{
+  background:#ffffff;color:#7a5517;border-color:rgba(217,135,22,.24)
+}
+html[data-theme="light"] .cphl-efficiency-config button{
+  background:#fff3d9;color:#9a5e0d;border-color:rgba(217,135,22,.24)
+}
+html[data-theme="light"] .cphl-rule-note{
+  background:#eef8fd;color:#527389;border-color:rgba(11,134,213,.16)
+}
+html[data-theme="light"] .cphl-alert{background:#edf9f4;color:#34785f;border-color:rgba(21,155,115,.20)}
+html[data-theme="light"] .cphl-alert.error{background:#fff0f0;color:#a83d3d;border-color:rgba(190,65,65,.18)}
+html[data-theme="light"] .cphl-toolbar{
+  background:#f7fbfd;border-color:rgba(44,88,122,.15)
+}
+html[data-theme="light"] .cphl-field>span{color:#6c8396}
+html[data-theme="light"] .cphl-field input,
+html[data-theme="light"] .cphl-field select{
+  background:#ffffff;color:#24455e;border-color:rgba(44,88,122,.17)
+}
+html[data-theme="light"] .cphl-action{background:#e8f5fc;color:#0b6fa8;border-color:rgba(11,134,213,.24)}
+html[data-theme="light"] .cphl-action.secondary{background:#ffffff;color:#60788c}
+html[data-theme="light"] .cphl-table-top{border-color:rgba(44,88,122,.10)}
+html[data-theme="light"] .cphl-table th{
+  background:#edf5f9;color:#617b91;border-color:rgba(44,88,122,.14)
+}
+html[data-theme="light"] .cphl-table td{
+  color:#4b687e;border-color:rgba(44,88,122,.09)
+}
+html[data-theme="light"] .cphl-table tbody tr:hover{background:#f2f8fb}
+html[data-theme="light"] .cphl-plate{color:#24455e!important}
+html[data-theme="light"] .cphl-status{background:#e9f8f2;color:#14795b}
+html[data-theme="light"] .cphl-status.variable{background:#fff4de;color:#9c620f}
+html[data-theme="light"] .cphl-status.exists{background:#eef3f6;color:#60778a}
+html[data-theme="light"] .cphl-status.divergence{background:#fff0f0;color:#ab4141}
+html[data-theme="light"] .cphl-review-button{background:#fff4de;color:#9c620f}
+html[data-theme="light"] .cphl-review-button.done{background:#e9f8f2;color:#14795b}
+html[data-theme="light"] .cphl-legend{color:#687f92;border-color:rgba(44,88,122,.10)}
