@@ -280,8 +280,9 @@ export default function CphLightPage(){
   const divergences=classified.filter(row=>row.status==='Divergência no histórico').length
   const variableRows=classified.filter(row=>!row.duplicate&&row.variable)
   const reviewedVariables=variableRows.filter(row=>reviewed.has(row.id)).length
-  const ready=history.size?classified.filter(row=>!row.duplicate&&(!row.variable||reviewed.has(row.id))).length:0
-  const filteredReady=history.size?filtered.filter(row=>!row.duplicate&&(!row.variable||reviewed.has(row.id))):[]
+  const ready=history.size?classified.filter(row=>!row.duplicate&&!row.variable).length:0
+  const filteredExportRows=history.size?filtered.filter(row=>!row.duplicate):[]
+  const filteredConsultRows=filteredExportRows.filter(row=>row.variable)
 
   const loadReport=async(event:ChangeEvent<HTMLInputElement>)=>{
     const file=event.target.files?.[0]
@@ -353,12 +354,12 @@ export default function CphLightPage(){
       setNotice({tone:'error',text:'Importe o Dados RDC Leves atualizado antes de exportar. Assim o RIVORA consegue bloquear o que já foi enviado.'})
       return
     }
-    if(!filteredReady.length){
-      setNotice({tone:'error',text:'Não há registros novos liberados nos filtros atuais.'})
+    if(!filteredExportRows.length){
+      setNotice({tone:'error',text:'Não há registros novos nos filtros atuais.'})
       return
     }
 
-    const cphData=filteredReady.map(row=>({
+    const cphData=filteredExportRows.map(row=>({
       'Data':displayDate(row.dateKey),
       'Operação':row.operation,
       'Placa':row.plate,
@@ -398,13 +399,36 @@ export default function CphLightPage(){
       'VARIÁVEL':row.variable?'X':'',
     }))
 
+    const consultData=filteredConsultRows.map(row=>({
+      'SITUAÇÃO':'X — Consultar',
+      'DATA':displayDate(row.dateKey),
+      'PLACA':row.plate,
+      'OPERAÇÃO':row.operation,
+      'POSTO':row.station,
+      'COMBUSTÍVEL':row.fuel,
+      'ODÔMETRO':row.odometer??'',
+      'LITROS':row.liters??'',
+      'KM IDEAL':row.kmIdeal??'',
+      'KM REAL':row.kmReal??'',
+      'MÉDIA IDEAL':row.averageIdeal??'',
+      'MÉDIA REAL':row.averageReal??'',
+      'EFICIÊNCIA (%)':row.efficiency,
+      'VARIÁVEL':'X',
+      'REVISADO NO RIVORA':reviewed.has(row.id)?'Sim':'Não',
+    }))
+
     const workbook=XLSX.utils.book_new()
     const cphSheet=XLSX.utils.json_to_sheet(cphData)
+    const consultSheet=XLSX.utils.json_to_sheet(consultData)
     const auditSheet=XLSX.utils.json_to_sheet(auditData)
 
     cphSheet['!cols']=[
       {wch:20},{wch:26},{wch:12},{wch:30},{wch:18},{wch:12},{wch:14},{wch:14},{wch:14},
       {wch:18},{wch:24},{wch:12},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14},
+    ]
+    consultSheet['!cols']=[
+      {wch:18},{wch:22},{wch:12},{wch:28},{wch:30},{wch:18},{wch:14},{wch:12},
+      {wch:12},{wch:12},{wch:14},{wch:14},{wch:16},{wch:10},{wch:18},
     ]
     auditSheet['!cols']=[
       {wch:24},{wch:10},{wch:22},{wch:12},{wch:28},{wch:20},{wch:32},
@@ -412,12 +436,13 @@ export default function CphLightPage(){
     ]
 
     XLSX.utils.book_append_sheet(workbook,cphSheet,'Dados RDC Leves')
+    if(consultData.length) XLSX.utils.book_append_sheet(workbook,consultSheet,'X - Consultar')
     XLSX.utils.book_append_sheet(workbook,auditSheet,'Auditoria RIVORA')
 
     const now=new Date()
     const stamp=now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+'_'+pad(now.getHours())+pad(now.getMinutes())
     XLSX.writeFile(workbook,'Dados_RDC_Leves_Novos_'+stamp+'.xlsx')
-    setNotice({tone:'ok',text:filteredReady.length+' registros novos liberados foram exportados. Duplicados e X não revisados ficaram de fora.'})
+    setNotice({tone:'ok',text:filteredExportRows.length+' registros novos foram exportados, incluindo '+filteredConsultRows.length+' com X para consulta. Duplicados ficaram de fora.'})
   }
 
   return <>
@@ -462,7 +487,7 @@ export default function CphLightPage(){
 
       <div className="cphl-rule-note">
         <AlertTriangle size={15}/>
-        <span><b>Regra da macro:</b> eficiência abaixo de 50% ou acima de 150% recebe X. Entre 50% e 150%, inclusive, fica dentro do esperado. O relatório é comparado com a base usando placa + data/hora no minuto. Bases grandes são reduzidas em memória para somente as chaves e odômetros necessários ao comparativo.</span>
+        <span><b>Regra da macro:</b> eficiência abaixo de 50% ou acima de 150% recebe X. Entre 50% e 150%, inclusive, fica dentro do esperado. O relatório é comparado com a base usando placa + data/hora no minuto. Na exportação, todos os registros novos entram no Excel; os X também vão juntos e recebem uma aba própria para tratamento.</span>
       </div>
 
       {notice&&<div className={notice.tone==='error'?'cphl-alert error':'cphl-alert'}><span>{notice.text}</span><button onClick={()=>setNotice(null)}>Fechar</button></div>}
@@ -474,7 +499,7 @@ export default function CphLightPage(){
         <label className="cphl-field"><span>DE</span><input type="date" value={startDate} onChange={event=>setStartDate(event.target.value)}/></label>
         <label className="cphl-field"><span>ATÉ</span><input type="date" value={endDate} onChange={event=>setEndDate(event.target.value)}/></label>
         <button className="cphl-action secondary" onClick={clearAll}><RotateCcw size={13}/>Limpar</button>
-        <button className="cphl-action" onClick={exportRows} disabled={!history.size||!filteredReady.length}><Download size={13}/>Exportar {filteredReady.length}</button>
+        <button className="cphl-action" onClick={exportRows} disabled={!history.size||!filteredExportRows.length}><Download size={13}/>Exportar {filteredExportRows.length}</button>
       </section>
 
       <section className="cphl-table-panel">
