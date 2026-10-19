@@ -9,14 +9,15 @@ import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } fr
 import { collection, doc, onSnapshot, serverTimestamp, Timestamp, writeBatch } from 'firebase/firestore'
 import './App.css'
 import { auth, db } from './firebase'
+import CphLightPage from './CphLightPage'
 
-type Page = 'Visão geral' | 'Relatórios' | 'Tarefas' | 'Automações' | 'Fechamentos e Importações' | 'Responsáveis' | 'Retornos' | 'Análises' | 'Histórico'
+type Page = 'Visão geral' | 'Relatórios' | 'Tarefas' | 'Automações' | 'Fechamentos e Importações' | 'Responsáveis' | 'Retornos' | 'Análises' | 'CPH Frota Leve' | 'Histórico'
 type Task = { id:number; title:string; meta:string; done:boolean; due:string }
 type Closure = { op:string; period:string; records:number; status:string; next:string }
 
 const NAV_ITEMS:Array<[Page, typeof LayoutDashboard]> = [
   ['Visão geral',LayoutDashboard],['Relatórios',FileSpreadsheet],['Tarefas',ListTodo],
-  ['Automações',Workflow],['Fechamentos e Importações',Archive],['Responsáveis',Users],['Retornos',Inbox],['Análises',Gauge],['Histórico',History],
+  ['Automações',Workflow],['Fechamentos e Importações',Archive],['Responsáveis',Users],['Retornos',Inbox],['Análises',Gauge],['CPH Frota Leve',FileSpreadsheet],['Histórico',History],
 ]
 const TASK_SEED:Task[] = [
   {id:1,title:'Aguardar retorno corrigido — Juatuba',meta:'Retorno operacional',done:false,due:'Aguardando'},
@@ -148,6 +149,7 @@ const SEARCH_ITEMS:Array<{label:string;detail:string;page:Page}> = [
   {label:'Responsáveis',detail:'Cadastro de colaboradores e vínculo com operações',page:'Responsáveis'},
   {label:'Retornos',detail:'Conversas e anexos corrigidos',page:'Retornos'},
   {label:'Análises',detail:'Indicadores, divergências e CPH',page:'Análises'},
+  {label:'CPH Frota Leve',detail:'Comparativo com histórico, eficiência e registros variáveis',page:'CPH Frota Leve'},
   {label:'Histórico',detail:'Registro de ações e mudanças',page:'Histórico'},
   {label:'Juatuba',detail:'Relatório aguardando retorno corrigido',page:'Relatórios'},
   {label:'Jundiaí',detail:'Relatório aguardando retorno corrigido',page:'Relatórios'},
@@ -305,6 +307,7 @@ function DashboardApp(){
         {page==='Responsáveis'&&<ResponsiblesPage/>}
         {page==='Retornos'&&<ReturnsPage setPage={setPage}/>} 
         {page==='Análises'&&<AnalyticsPage/>}
+        {page==='CPH Frota Leve'&&<CphLightPage/>}
         {page==='Histórico'&&<HistoryPage/>}
       </section>
     </main>
