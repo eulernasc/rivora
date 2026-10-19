@@ -218,6 +218,18 @@ function formatNumber(value:number|null,decimals=2){
   return value.toLocaleString('pt-BR',{minimumFractionDigits:decimals,maximumFractionDigits:decimals})
 }
 
+function readStoredEfficiencyLimits(){
+  const read=(key:string,fallback:number)=>{
+    const raw=localStorage.getItem(key)
+    if(raw===null||raw.trim()==='') return fallback
+    const value=Number(raw)
+    return Number.isFinite(value)&&value>0&&value<=500?value:fallback
+  }
+  const min=read('rivora.cphLight.efficiencyMin',50)
+  const max=read('rivora.cphLight.efficiencyMax',150)
+  return min<max?{min,max}:{min:50,max:150}
+}
+
 export default function CphLightPage(){
   const [reportRows,setReportRows]=useState<ReportRow[]>([])
   const [history,setHistory]=useState<Map<string,HistoricalRow>>(new Map())
@@ -233,19 +245,14 @@ export default function CphLightPage(){
   const [statusFilter,setStatusFilter]=useState<'Todos'|CphStatus>('Todos')
   const [startDate,setStartDate]=useState('')
   const [endDate,setEndDate]=useState('')
-  const [efficiencyMin,setEfficiencyMin]=useState<number>(()=>{
-    const raw=localStorage.getItem('rivora.cphLight.efficiencyMin')
-    if(raw===null||raw.trim()==='') return 50
-    const saved=Number(raw)
-    return Number.isFinite(saved)&&saved>=0&&saved<500?saved:50
-  })
-  const [efficiencyMax,setEfficiencyMax]=useState<number>(()=>{
-    const saved=Number(localStorage.getItem('rivora.cphLight.efficiencyMax'))
-    return Number.isFinite(saved)&&saved>0&&saved<=500?saved:150
-  })
+  const initialEfficiencyLimits=useMemo(()=>readStoredEfficiencyLimits(),[])
+  const [efficiencyMin,setEfficiencyMin]=useState<number>(initialEfficiencyLimits.min)
+  const [efficiencyMax,setEfficiencyMax]=useState<number>(initialEfficiencyLimits.max)
 
-  const setEfficiencyLimit=(type:'min'|'max',value:number)=>{
-    if(!Number.isFinite(value)||value<0||value>500) return
+  const setEfficiencyLimit=(type:'min'|'max',rawValue:string)=>{
+    if(rawValue.trim()==='') return
+    const value=Number(rawValue)
+    if(!Number.isFinite(value)||value<=0||value>500) return
     if(type==='min'){
       if(value>=efficiencyMax) return
       setEfficiencyMin(value)
@@ -534,8 +541,8 @@ export default function CphLightPage(){
             <span>Ajuste os limites que definem quando um registro recebe X. Os valores ficam salvos neste navegador.</span>
           </div>
         </div>
-        <label><span>MÍNIMA (%)</span><input type="number" min="0" max="499" step="1" value={efficiencyMin} onChange={event=>setEfficiencyLimit('min',Number(event.target.value))}/></label>
-        <label><span>MÁXIMA (%)</span><input type="number" min="1" max="500" step="1" value={efficiencyMax} onChange={event=>setEfficiencyLimit('max',Number(event.target.value))}/></label>
+        <label><span>MÍNIMA (%)</span><input type="number" min="1" max="499" step="1" value={efficiencyMin} onChange={event=>setEfficiencyLimit('min',event.target.value)}/></label>
+        <label><span>MÁXIMA (%)</span><input type="number" min="1" max="500" step="1" value={efficiencyMax} onChange={event=>setEfficiencyLimit('max',event.target.value)}/></label>
         <button onClick={resetEfficiencyLimits}>Restaurar 50 / 150</button>
       </section>
 
