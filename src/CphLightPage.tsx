@@ -11,7 +11,7 @@ type RowRecord=Record<string,unknown>
 type CphStatus=
   | 'Dentro do esperado'
   | 'X — Consultar'
-  | 'Já existe no CPH'
+  | 'Já existe na base'
   | 'Divergência no histórico'
 
 type ReportRow={
@@ -23,20 +23,25 @@ type ReportRow={
   segment:string
   driver:string
   fuel:string
+  station:string
   model:string
   odometer:number|null
+  unitPrice:number|null
   liters:number|null
+  totalValue:number|null
   kmIdeal:number|null
   kmReal:number|null
   averageIdeal:number|null
   averageReal:number|null
+  variationKm:number|null
+  volumeIdeal:number|null
   efficiency:number
   variable:boolean
 }
 
 type HistoricalRow={
   key:string
-  odometer:number|null
+  odometers:Set<number>
 }
 
 type ClassifiedRow=ReportRow&{
@@ -51,7 +56,7 @@ const STATUS_OPTIONS:Array<'Todos'|CphStatus>=[
   'Todos',
   'Dentro do esperado',
   'X — Consultar',
-  'Já existe no CPH',
+  'Já existe na base',
   'Divergência no histórico',
 ]
 
@@ -153,13 +158,18 @@ function buildReportRows(rows:RowRecord[]){
       segment:toText(field(row,['Segmento','SEGMENTO'])),
       driver:toText(field(row,['Motorista'])),
       fuel:toText(field(row,['Combustível','Combustivel'])),
+      station:toText(field(row,['Posto','POSTO'])),
       model:toText(field(row,['Modelo'])),
       odometer:toNumber(field(row,['Odometro','Odômetro','ODOMETRO','ODÔMETRO'])),
+      unitPrice:toNumber(field(row,['Valor Litro','VALOR LITRO'])),
       liters:toNumber(field(row,['Litros Abast.','Litros Abast','LITROS ABASTECIDOS'])),
+      totalValue:toNumber(field(row,['Valor Total','VALOR TOTAL'])),
       kmIdeal,
       kmReal,
       averageIdeal,
       averageReal,
+      variationKm:toNumber(field(row,['Variação Km','Variacao Km','VARIAÇÃO KM','VARIACAO KM'])),
+      volumeIdeal:toNumber(field(row,['Volume Ideal','VOLUME IDEAL']))??(kmReal!==null&&averageIdeal!==null&&averageIdeal>0?kmReal/averageIdeal:null),
       efficiency,
       variable:efficiency<0.5||efficiency>1.5,
     })
@@ -186,7 +196,9 @@ function buildHistory(rows:RowRecord[]){
     ]))
 
     const key=plate+'|'+dateKey
-    if(!result.has(key)) result.set(key,{key,odometer})
+    const current=result.get(key)??{key,odometers:new Set<number>()}
+    if(odometer!==null) current.odometers.add(Math.round(odometer))
+    result.set(key,current)
   })
 
   return result
@@ -194,7 +206,7 @@ function buildHistory(rows:RowRecord[]){
 
 async function readRows(file:File){
   const buffer=await file.arrayBuffer()
-  const workbook=XLSX.read(buffer,{type:'array',cellDates:false})
+  const workbook=XLSX.read(buffer,{type:'array',cellDates:false,dense:true})
   const firstSheet=workbook.SheetNames[0]
   if(!firstSheet) throw new Error('A planilha não possui abas legíveis.')
   const sheet=workbook.Sheets[firstSheet]
@@ -211,6 +223,7 @@ export default function CphLightPage(){
   const [history,setHistory]=useState<Map<string,HistoricalRow>>(new Map())
   const [reportName,setReportName]=useState('')
   const [historyName,setHistoryName]=useState('')
+  const [historyRows,setHistoryRows]=useState(0)
   const [reviewed,setReviewed]=useState<Set<string>>(new Set())
   const [notice,setNotice]=useState<Notice>(null)
   const [loading,setLoading]=useState<'report'|'history'|null>(null)
@@ -233,15 +246,15 @@ export default function CphLightPage(){
     }
 
     const divergence=
-      historical.odometer!==null&&
       row.odometer!==null&&
-      Math.round(historical.odometer)!==Math.round(row.odometer)
+      historical.odometers.size>0&&
+      !historical.odometers.has(Math.round(row.odometer))
 
     return {
       ...row,
       duplicate:true,
       divergence,
-      status:divergence?'Divergência no histórico':'Já existe no CPH',
+      status:divergence?'Divergência no histórico':'Já existe na base',
     }
   }),[reportRows,history])
 
@@ -263,7 +276,7 @@ export default function CphLightPage(){
   ])
 
   const total=classified.length
-  const existing=classified.filter(row=>row.status==='Já existe no CPH').length
+  const existing=classified.filter(row=>row.status==='Já existe na base').length
   const divergences=classified.filter(row=>row.status==='Divergência no histórico').length
   const variableRows=classified.filter(row=>!row.duplicate&&row.variable)
   const reviewedVariables=variableRows.filter(row=>reviewed.has(row.id)).length
@@ -297,11 +310,13 @@ export default function CphLightPage(){
     setLoading('history')
     setNotice(null)
     try{
-      const historyMap=buildHistory(await readRows(file))
-      if(!historyMap.size) throw new Error('Não encontrei PLACA/MAQ e DATA DO ABASTECIMENTO no CPH.')
+      const historyRowsRaw=await readRows(file)
+      const historyMap=buildHistory(historyRowsRaw)
+      if(!historyMap.size) throw new Error('Não encontrei Placa e Data na base de comparação.')
       setHistory(historyMap)
+      setHistoryRows(Math.max(0,historyRowsRaw.length-1))
       setHistoryName(file.name)
-      setNotice({tone:'ok',text:historyMap.size.toLocaleString('pt-BR')+' chaves do CPH foram carregadas para impedir reenvios.'})
+      setNotice({tone:'ok',text:Math.max(0,historyRowsRaw.length-1).toLocaleString('pt-BR')+' linhas da base foram lidas e '+historyMap.size.toLocaleString('pt-BR')+' chaves únicas ficaram prontas para impedir reenvios.'})
     }catch(error){
       setNotice({tone:'error',text:error instanceof Error?error.message:'Não foi possível ler o CPH.'})
     }finally{
@@ -323,6 +338,7 @@ export default function CphLightPage(){
     setHistory(new Map())
     setReportName('')
     setHistoryName('')
+    setHistoryRows(0)
     setReviewed(new Set())
     setNotice(null)
     setPlateQuery('')
@@ -334,7 +350,7 @@ export default function CphLightPage(){
 
   const exportRows=()=>{
     if(!history.size){
-      setNotice({tone:'error',text:'Importe o CPH atualizado antes de exportar. Assim o RIVORA consegue bloquear o que já foi enviado.'})
+      setNotice({tone:'error',text:'Importe o Dados RDC Leves atualizado antes de exportar. Assim o RIVORA consegue bloquear o que já foi enviado.'})
       return
     }
     if(!filteredReady.length){
@@ -343,18 +359,23 @@ export default function CphLightPage(){
     }
 
     const cphData=filteredReady.map(row=>({
-      'SEGMENTO':row.segment,
-      'UNIDADE':row.operation,
-      'DATA DO ABASTECIMENTO':displayDate(row.dateKey),
-      'PLACA':row.plate,
-      'ODÔMETRO':row.odometer??'',
-      'KM IDEAL':row.kmIdeal??'',
-      'KM REAL':row.kmReal??'',
-      'LITROS ABASTECIDOS':row.liters??'',
-      'META DE CONSUMO':row.averageIdeal??'',
-      'MÉDIA REAL':row.averageReal??'',
-      'EFICIÊNCIA (%)':row.efficiency,
-      'VARIÁVEL':row.variable?'X':'',
+      'Data':displayDate(row.dateKey),
+      'Operação':row.operation,
+      'Placa':row.plate,
+      'Posto':row.station,
+      'Combustível':row.fuel,
+      'Valor Litro':row.unitPrice??'',
+      'Litros Abast.':row.liters??'',
+      'Valor Total':row.totalValue??'',
+      'Odometro':row.odometer??'',
+      'Segmento':row.segment,
+      'Modelo':row.model,
+      'Km Ideal':row.kmIdeal??'',
+      'Km Real':row.kmReal??'',
+      'Variação Km':row.variationKm??'',
+      'Média Ideal':row.averageIdeal??'',
+      'Média Real':row.averageReal??'',
+      'Volume Ideal':row.volumeIdeal??'',
     }))
 
     const auditData=filtered.map(row=>({
@@ -382,20 +403,20 @@ export default function CphLightPage(){
     const auditSheet=XLSX.utils.json_to_sheet(auditData)
 
     cphSheet['!cols']=[
-      {wch:18},{wch:28},{wch:22},{wch:12},{wch:14},{wch:12},
-      {wch:12},{wch:18},{wch:18},{wch:14},{wch:16},{wch:10},
+      {wch:20},{wch:26},{wch:12},{wch:30},{wch:18},{wch:12},{wch:14},{wch:14},{wch:14},
+      {wch:18},{wch:24},{wch:12},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14},
     ]
     auditSheet['!cols']=[
       {wch:24},{wch:10},{wch:22},{wch:12},{wch:28},{wch:20},{wch:32},
       {wch:16},{wch:24},{wch:14},{wch:12},{wch:12},{wch:12},{wch:14},{wch:14},{wch:16},{wch:10},
     ]
 
-    XLSX.utils.book_append_sheet(workbook,cphSheet,'CPH Frota Leve')
+    XLSX.utils.book_append_sheet(workbook,cphSheet,'Dados RDC Leves')
     XLSX.utils.book_append_sheet(workbook,auditSheet,'Auditoria RIVORA')
 
     const now=new Date()
     const stamp=now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+'_'+pad(now.getHours())+pad(now.getMinutes())
-    XLSX.writeFile(workbook,'CPH_Frota_Leve_'+stamp+'.xlsx')
+    XLSX.writeFile(workbook,'Dados_RDC_Leves_Novos_'+stamp+'.xlsx')
     setNotice({tone:'ok',text:filteredReady.length+' registros novos liberados foram exportados. Duplicados e X não revisados ficaram de fora.'})
   }
 
@@ -403,7 +424,7 @@ export default function CphLightPage(){
     <div className="intro">
       <span>CPH • FROTA LEVE</span>
       <h2>CPH Frota Leve</h2>
-      <p>Compare o relatório de abastecimentos com o CPH já enviado, valide a eficiência e leve adiante somente o que realmente é novo.</p>
+      <p>Compare o relatório novo com a base Dados RDC Leves já existente no SharePoint, valide a eficiência e leve adiante somente o que realmente é novo.</p>
     </div>
 
     <div className="cphl-shell">
@@ -422,11 +443,11 @@ export default function CphLightPage(){
         <article className="cphl-upload-card history">
           <div className="cphl-upload-copy">
             <span className="cphl-upload-icon"><ShieldCheck size={19}/></span>
-            <div><span>COMPARATIVO</span><b>CPH já enviado</b><small>Importe a cópia atual do SharePoint. A trava segue a macro: Placa + Data/Hora, comparadas no minuto.</small></div>
+            <div><span>COMPARATIVO</span><b>Dados RDC Leves • SharePoint</b><small>Importe a base baixada do SharePoint. Arquivos grandes são processados localmente; a trava usa Placa + Data/Hora no minuto.</small></div>
           </div>
           <div className="cphl-upload-actions">
-            <label className="cphl-file-button"><FileSearch size={14}/>{loading==='history'?'Lendo...':'Importar CPH atual'}<input type="file" accept=".xlsx,.xls,.xlsm" onChange={loadHistory} disabled={loading!==null}/></label>
-            <span className="cphl-file-name" title={historyName}>{historyName||'Nenhum CPH carregado'}</span>
+            <label className="cphl-file-button"><FileSearch size={14}/>{loading==='history'?'Lendo base grande...':'Importar Dados RDC Leves'}<input type="file" accept=".xlsx,.xls,.xlsm" onChange={loadHistory} disabled={loading!==null}/></label>
+            <span className="cphl-file-name" title={historyName}>{historyName||'Nenhuma base do SharePoint carregada'}</span>
           </div>
         </article>
       </section>
@@ -434,14 +455,14 @@ export default function CphLightPage(){
       <section className="cphl-kpis">
         <article className="cphl-kpi"><span>REGISTROS DO RELATÓRIO</span><b>{total.toLocaleString('pt-BR')}</b><small>linhas válidas carregadas</small></article>
         <article className="cphl-kpi ok"><span>NOVOS LIBERADOS</span><b>{ready.toLocaleString('pt-BR')}</b><small>prontos para exportação</small></article>
-        <article className="cphl-kpi muted"><span>JÁ EXISTEM NO CPH</span><b>{existing.toLocaleString('pt-BR')}</b><small>bloqueados para não repetir</small></article>
+        <article className="cphl-kpi muted"><span>JÁ EXISTEM NA BASE</span><b>{existing.toLocaleString('pt-BR')}</b><small>bloqueados para não repetir</small></article>
         <article className="cphl-kpi warn"><span>X • CONSULTAR</span><b>{variableRows.length.toLocaleString('pt-BR')}</b><small>{reviewedVariables} revisados/liberados</small></article>
         <article className="cphl-kpi danger"><span>DIVERGÊNCIAS</span><b>{divergences.toLocaleString('pt-BR')}</b><small>mesma chave com odômetro diferente</small></article>
       </section>
 
       <div className="cphl-rule-note">
         <AlertTriangle size={15}/>
-        <span><b>Regra da macro:</b> eficiência abaixo de 50% ou acima de 150% recebe X. Entre 50% e 150%, inclusive, fica dentro do esperado. O relatório é comparado com o CPH usando placa + data/hora no minuto, porque a macro original descarta os segundos.</span>
+        <span><b>Regra da macro:</b> eficiência abaixo de 50% ou acima de 150% recebe X. Entre 50% e 150%, inclusive, fica dentro do esperado. O relatório é comparado com a base usando placa + data/hora no minuto. Bases grandes são reduzidas em memória para somente as chaves e odômetros necessários ao comparativo.</span>
       </div>
 
       {notice&&<div className={notice.tone==='error'?'cphl-alert error':'cphl-alert'}><span>{notice.text}</span><button onClick={()=>setNotice(null)}>Fechar</button></div>}
@@ -459,7 +480,7 @@ export default function CphLightPage(){
       <section className="cphl-table-panel">
         <div className="cphl-table-top">
           <div><b>Resultado do comparativo</b><small>{filtered.length.toLocaleString('pt-BR')} registros nos filtros • exportação respeita os filtros atuais</small></div>
-          <span className="cphl-file-name">{history.size?'CPH protegido por '+history.size.toLocaleString('pt-BR')+' chaves':'Importe o CPH atual antes de exportar'}</span>
+          <span className="cphl-file-name">{history.size?historyRows.toLocaleString('pt-BR')+' linhas • '+history.size.toLocaleString('pt-BR')+' chaves únicas':'Importe Dados RDC Leves antes de exportar'}</span>
         </div>
 
         <div className="cphl-table-scroll">
@@ -470,7 +491,7 @@ export default function CphLightPage(){
             </tr></thead>
             <tbody>
               {filtered.map(row=><tr key={row.id}>
-                <td><span className={'cphl-status '+(row.status==='X — Consultar'?'variable':row.status==='Já existe no CPH'?'exists':row.status==='Divergência no histórico'?'divergence':'')}>{row.status}</span></td>
+                <td><span className={'cphl-status '+(row.status==='X — Consultar'?'variable':row.status==='Já existe na base'?'exists':row.status==='Divergência no histórico'?'divergence':'')}>{row.status}</span></td>
                 <td>{displayDate(row.dateKey)}</td>
                 <td className="cphl-plate">{row.plate}</td>
                 <td>{row.operation||'—'}</td>
@@ -495,7 +516,7 @@ export default function CphLightPage(){
         <div className="cphl-legend">
           <span><i/>Dentro do esperado</span>
           <span><i className="amber"/>X — consultar</span>
-          <span><i className="gray"/>Já existe no CPH</span>
+          <span><i className="gray"/>Já existe na base</span>
           <span><i className="red"/>Divergência no histórico</span>
           <span><CheckCircle2 size={12}/>Os arquivos são processados somente nesta sessão do navegador; nenhum abastecimento é salvo no Firestore.</span>
         </div>
