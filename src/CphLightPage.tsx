@@ -267,8 +267,8 @@ export default function CphLightPage(){
   const divergences=classified.filter(row=>row.status==='Divergência no histórico').length
   const variableRows=classified.filter(row=>!row.duplicate&&row.variable)
   const reviewedVariables=variableRows.filter(row=>reviewed.has(row.id)).length
-  const ready=classified.filter(row=>!row.duplicate&&(!row.variable||reviewed.has(row.id))).length
-  const filteredReady=filtered.filter(row=>!row.duplicate&&(!row.variable||reviewed.has(row.id)))
+  const ready=history.size?classified.filter(row=>!row.duplicate&&(!row.variable||reviewed.has(row.id))).length:0
+  const filteredReady=history.size?filtered.filter(row=>!row.duplicate&&(!row.variable||reviewed.has(row.id))):[]
 
   const loadReport=async(event:ChangeEvent<HTMLInputElement>)=>{
     const file=event.target.files?.[0]
