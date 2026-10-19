@@ -359,7 +359,14 @@ export default function CphLightPage(){
       return
     }
 
-    const cphData=filteredExportRows.map(row=>({
+    const exportRowsSorted=[...filteredExportRows].sort((a,b)=>{
+      if(a.variable!==b.variable) return a.variable?-1:1
+      return b.dateKey.localeCompare(a.dateKey)
+    })
+
+    const cphData=exportRowsSorted.map(row=>({
+      'Situação':row.variable?'X — CONSULTAR':'Dentro do esperado',
+      'Variável':row.variable?'X':'',
       'Data':displayDate(row.dateKey),
       'Operação':row.operation,
       'Placa':row.plate,
@@ -423,9 +430,10 @@ export default function CphLightPage(){
     const auditSheet=XLSX.utils.json_to_sheet(auditData)
 
     cphSheet['!cols']=[
-      {wch:20},{wch:26},{wch:12},{wch:30},{wch:18},{wch:12},{wch:14},{wch:14},{wch:14},
-      {wch:18},{wch:24},{wch:12},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14},
+      {wch:22},{wch:10},{wch:20},{wch:26},{wch:12},{wch:30},{wch:18},{wch:12},{wch:14},{wch:14},
+      {wch:14},{wch:18},{wch:24},{wch:12},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14},
     ]
+    if(cphSheet['!ref']) cphSheet['!autofilter']={ref:cphSheet['!ref']}
     consultSheet['!cols']=[
       {wch:18},{wch:22},{wch:12},{wch:28},{wch:30},{wch:18},{wch:14},{wch:12},
       {wch:12},{wch:12},{wch:14},{wch:14},{wch:16},{wch:10},{wch:18},
@@ -442,7 +450,7 @@ export default function CphLightPage(){
     const now=new Date()
     const stamp=now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+'_'+pad(now.getHours())+pad(now.getMinutes())
     XLSX.writeFile(workbook,'Dados_RDC_Leves_Novos_'+stamp+'.xlsx')
-    setNotice({tone:'ok',text:filteredExportRows.length+' registros novos foram exportados, incluindo '+filteredConsultRows.length+' com X para consulta. Duplicados ficaram de fora.'})
+    setNotice({tone:'ok',text:filteredExportRows.length+' registros novos foram exportados. Os '+filteredConsultRows.length+' com X aparecem primeiro na aba principal, sinalizados como X — CONSULTAR, e também na aba própria.'})
   }
 
   return <>
@@ -487,7 +495,7 @@ export default function CphLightPage(){
 
       <div className="cphl-rule-note">
         <AlertTriangle size={15}/>
-        <span><b>Regra da macro:</b> eficiência abaixo de 50% ou acima de 150% recebe X. Entre 50% e 150%, inclusive, fica dentro do esperado. O relatório é comparado com a base usando placa + data/hora no minuto. Na exportação, todos os registros novos entram no Excel; os X também vão juntos e recebem uma aba própria para tratamento.</span>
+        <span><b>Regra da macro:</b> eficiência abaixo de 50% ou acima de 150% recebe X. Entre 50% e 150%, inclusive, fica dentro do esperado. O relatório é comparado com a base usando placa + data/hora no minuto. Na exportação, todos os registros novos entram no Excel; os X aparecem primeiro e sinalizados na aba principal, além da aba própria para tratamento.</span>
       </div>
 
       {notice&&<div className={notice.tone==='error'?'cphl-alert error':'cphl-alert'}><span>{notice.text}</span><button onClick={()=>setNotice(null)}>Fechar</button></div>}
