@@ -234,7 +234,9 @@ export default function CphLightPage(){
   const [startDate,setStartDate]=useState('')
   const [endDate,setEndDate]=useState('')
   const [efficiencyMin,setEfficiencyMin]=useState<number>(()=>{
-    const saved=Number(localStorage.getItem('rivora.cphLight.efficiencyMin'))
+    const raw=localStorage.getItem('rivora.cphLight.efficiencyMin')
+    if(raw===null||raw.trim()==='') return 50
+    const saved=Number(raw)
     return Number.isFinite(saved)&&saved>=0&&saved<500?saved:50
   })
   const [efficiencyMax,setEfficiencyMax]=useState<number>(()=>{

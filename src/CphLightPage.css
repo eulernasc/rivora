@@ -296,3 +296,255 @@ html[data-theme="light"] .cphl-status.divergence{background:#fff0f0;color:#ab414
 html[data-theme="light"] .cphl-review-button{background:#fff4de;color:#9c620f}
 html[data-theme="light"] .cphl-review-button.done{background:#e9f8f2;color:#14795b}
 html[data-theme="light"] .cphl-legend{color:#687f92;border-color:rgba(44,88,122,.10)}
+
+
+/* =========================================================
+   CPH FROTA LEVE — DESIGN POLISH v4
+   ========================================================= */
+.cphl-shell{gap:16px}
+.cphl-import-grid{
+  gap:16px;
+  align-items:stretch;
+}
+.cphl-upload-card{
+  min-height:176px;
+  display:grid;
+  grid-template-rows:1fr auto;
+  gap:22px;
+  padding:22px 23px;
+  border-radius:15px;
+}
+.cphl-upload-copy{
+  display:grid;
+  grid-template-columns:50px minmax(0,1fr);
+  gap:15px;
+  align-items:center;
+}
+.cphl-upload-copy>div{min-width:0}
+.cphl-upload-icon{
+  width:50px;
+  height:50px;
+  align-self:start;
+  margin-top:1px;
+  border-radius:12px;
+}
+.cphl-upload-copy span{font-size:9.5px;letter-spacing:.12em}
+.cphl-upload-copy b{margin-top:6px;font-size:15px;line-height:1.2}
+.cphl-upload-copy small{
+  max-width:640px;
+  margin-top:7px;
+  font-size:10.5px;
+  line-height:1.55;
+}
+.cphl-upload-actions{
+  display:grid;
+  grid-template-columns:max-content minmax(0,1fr);
+  align-items:center;
+  gap:12px;
+  min-width:0;
+}
+.cphl-file-button{
+  min-height:40px;
+  padding:0 14px;
+  border-radius:9px;
+  font-size:10.5px;
+}
+.cphl-file-name{
+  max-width:none;
+  font-size:10px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.cphl-kpis{gap:12px}
+.cphl-kpi{
+  min-height:112px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:17px 18px;
+  border-radius:13px;
+}
+.cphl-kpi span{font-size:9px;letter-spacing:.10em}
+.cphl-kpi b{margin-top:9px;font-size:29px;line-height:1}
+.cphl-kpi small{margin-top:8px;font-size:10px;line-height:1.4}
+
+.cphl-efficiency-config{
+  grid-template-columns:minmax(360px,1fr) 150px 150px max-content;
+  gap:14px;
+  align-items:end;
+  padding:17px 18px;
+  border-radius:12px;
+}
+.cphl-efficiency-copy{gap:11px;align-self:center}
+.cphl-efficiency-copy>svg{margin-top:1px}
+.cphl-efficiency-copy b{font-size:13px}
+.cphl-efficiency-copy span{font-size:10px;line-height:1.5}
+.cphl-efficiency-config label{gap:7px}
+.cphl-efficiency-config label>span{font-size:8.5px;letter-spacing:.10em}
+.cphl-efficiency-config input{height:40px;border-radius:9px;font-size:11px}
+.cphl-efficiency-config button{
+  height:40px;
+  padding:0 14px;
+  border-radius:9px;
+  font-size:10px;
+}
+.cphl-rule-note{
+  min-height:50px;
+  padding:11px 14px;
+  border-radius:10px;
+  font-size:10px;
+}
+
+.cphl-alert{
+  min-height:46px;
+  padding:10px 14px;
+  border-radius:10px;
+  font-size:10px;
+}
+
+.cphl-toolbar{
+  grid-template-columns:minmax(190px,1.1fr) minmax(150px,.75fr) minmax(170px,.85fr) 150px 150px auto auto;
+  gap:11px;
+  padding:15px;
+  border-radius:12px;
+}
+.cphl-field{gap:7px}
+.cphl-field>span{font-size:8.5px;letter-spacing:.10em}
+.cphl-field input,.cphl-field select{
+  height:40px;
+  border-radius:9px;
+  font-size:10.5px;
+}
+.cphl-action{
+  height:40px;
+  padding:0 14px;
+  border-radius:9px;
+  font-size:10px;
+}
+
+.cphl-table-panel{border-radius:13px}
+.cphl-table-top{
+  min-height:64px;
+  padding:12px 16px;
+}
+.cphl-table-top>div b{font-size:13px}
+.cphl-table-top>div small{font-size:9.5px}
+.cphl-table-scroll{max-height:64vh}
+.cphl-table th{
+  padding:11px 10px;
+  font-size:9px;
+  letter-spacing:.07em;
+}
+.cphl-table td{
+  padding:12px 10px;
+  font-size:10.5px;
+}
+.cphl-status{
+  min-height:27px;
+  padding:0 9px;
+  font-size:9px;
+}
+.cphl-review-button{min-height:30px;font-size:9px}
+.cphl-legend{gap:13px;padding:12px 16px;font-size:9px}
+
+/* Better dark surfaces */
+html:not([data-theme="light"]) .cphl-upload-card{
+  background:linear-gradient(155deg,#10263b,#0d1f32);
+  border-color:rgba(126,188,230,.24);
+}
+html:not([data-theme="light"]) .cphl-upload-card.history{
+  border-color:rgba(56,215,163,.24);
+}
+html:not([data-theme="light"]) .cphl-upload-icon{
+  background:linear-gradient(145deg,#173b58,#102a42);
+  box-shadow:inset 0 1px rgba(255,255,255,.025);
+}
+html:not([data-theme="light"]) .cphl-upload-card.history .cphl-upload-icon{
+  background:linear-gradient(145deg,#123a31,#0e2a24);
+}
+html:not([data-theme="light"]) .cphl-kpi{
+  background:linear-gradient(150deg,#11263b,#0e2033);
+  border-color:rgba(126,188,230,.24);
+}
+html:not([data-theme="light"]) .cphl-efficiency-config{
+  background:linear-gradient(135deg,#211d16,#15202a);
+  border-color:rgba(255,179,71,.23);
+}
+html:not([data-theme="light"]) .cphl-rule-note{
+  background:#10283c;
+  border-color:rgba(88,194,239,.20);
+}
+html:not([data-theme="light"]) .cphl-toolbar{
+  background:linear-gradient(150deg,#0e2134,#0c1c2d);
+  border-color:rgba(126,188,230,.22);
+}
+html:not([data-theme="light"]) .cphl-table-panel{
+  background:linear-gradient(180deg,#102235,#0c1c2d);
+  border-color:rgba(126,188,230,.22);
+}
+
+/* Light surfaces */
+html[data-theme="light"] .cphl-upload-card{
+  background:linear-gradient(155deg,#ffffff,#f7fbfd);
+  border-color:rgba(40,94,132,.15);
+  box-shadow:0 12px 28px rgba(48,82,106,.07);
+}
+html[data-theme="light"] .cphl-upload-icon{
+  background:linear-gradient(145deg,#e9f5fc,#deedf6);
+  color:#0c78b4;
+}
+html[data-theme="light"] .cphl-upload-card.history .cphl-upload-icon{
+  background:linear-gradient(145deg,#eaf9f3,#ddf3e9);
+  color:#14805e;
+}
+html[data-theme="light"] .cphl-kpi{
+  background:linear-gradient(150deg,#ffffff,#f7fbfd);
+  border-color:rgba(40,94,132,.15);
+  box-shadow:0 9px 24px rgba(48,82,106,.06);
+}
+html[data-theme="light"] .cphl-efficiency-config{
+  background:linear-gradient(135deg,#fffaf1,#f8fbfd);
+  border-color:rgba(217,135,22,.20);
+}
+html[data-theme="light"] .cphl-rule-note{
+  background:#eef8fd;
+  border-color:rgba(11,134,213,.16);
+}
+html[data-theme="light"] .cphl-toolbar{
+  background:#ffffff;
+  border-color:rgba(40,94,132,.15);
+  box-shadow:0 8px 22px rgba(48,82,106,.05);
+}
+html[data-theme="light"] .cphl-table-panel{
+  background:#ffffff;
+  border-color:rgba(40,94,132,.15);
+  box-shadow:0 10px 26px rgba(48,82,106,.06);
+}
+
+/* Responsive behavior tuned for corporate laptop widths */
+@media(max-width:1450px){
+  .cphl-efficiency-config{
+    grid-template-columns:minmax(280px,1fr) 130px 130px max-content;
+  }
+  .cphl-toolbar{
+    grid-template-columns:minmax(170px,1fr) minmax(135px,.7fr) minmax(150px,.8fr) 135px 135px auto auto;
+  }
+}
+@media(max-width:1180px){
+  .cphl-kpis{grid-template-columns:repeat(3,1fr)}
+  .cphl-efficiency-config{grid-template-columns:1fr 140px 140px}
+  .cphl-efficiency-config button{grid-column:2/4}
+  .cphl-toolbar{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:850px){
+  .cphl-import-grid,.cphl-kpis{grid-template-columns:1fr}
+  .cphl-upload-card{min-height:0}
+  .cphl-upload-actions{grid-template-columns:1fr}
+  .cphl-file-button{width:max-content}
+  .cphl-efficiency-config{grid-template-columns:1fr}
+  .cphl-efficiency-config button{grid-column:auto}
+  .cphl-toolbar{grid-template-columns:1fr}
+  .cphl-action{width:100%}
+}
