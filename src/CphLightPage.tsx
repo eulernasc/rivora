@@ -233,15 +233,45 @@ export default function CphLightPage(){
   const [statusFilter,setStatusFilter]=useState<'Todos'|CphStatus>('Todos')
   const [startDate,setStartDate]=useState('')
   const [endDate,setEndDate]=useState('')
+  const [efficiencyMin,setEfficiencyMin]=useState<number>(()=>{
+    const saved=Number(localStorage.getItem('rivora.cphLight.efficiencyMin'))
+    return Number.isFinite(saved)&&saved>=0&&saved<500?saved:50
+  })
+  const [efficiencyMax,setEfficiencyMax]=useState<number>(()=>{
+    const saved=Number(localStorage.getItem('rivora.cphLight.efficiencyMax'))
+    return Number.isFinite(saved)&&saved>0&&saved<=500?saved:150
+  })
+
+  const setEfficiencyLimit=(type:'min'|'max',value:number)=>{
+    if(!Number.isFinite(value)||value<0||value>500) return
+    if(type==='min'){
+      if(value>=efficiencyMax) return
+      setEfficiencyMin(value)
+      localStorage.setItem('rivora.cphLight.efficiencyMin',String(value))
+      return
+    }
+    if(value<=efficiencyMin) return
+    setEfficiencyMax(value)
+    localStorage.setItem('rivora.cphLight.efficiencyMax',String(value))
+  }
+
+  const resetEfficiencyLimits=()=>{
+    setEfficiencyMin(50)
+    setEfficiencyMax(150)
+    localStorage.setItem('rivora.cphLight.efficiencyMin','50')
+    localStorage.setItem('rivora.cphLight.efficiencyMax','150')
+  }
 
   const classified=useMemo<ClassifiedRow[]>(()=>reportRows.map(row=>{
+    const variable=row.efficiency<efficiencyMin/100||row.efficiency>efficiencyMax/100
     const historical=history.get(row.key)
     if(!historical){
       return {
         ...row,
+        variable,
         duplicate:false,
         divergence:false,
-        status:row.variable?'X — Consultar':'Dentro do esperado',
+        status:variable?'X — Consultar':'Dentro do esperado',
       }
     }
 
@@ -252,11 +282,12 @@ export default function CphLightPage(){
 
     return {
       ...row,
+      variable,
       duplicate:true,
       divergence,
       status:divergence?'Divergência no histórico':'Já existe na base',
     }
-  }),[reportRows,history])
+  }),[reportRows,history,efficiencyMin,efficiencyMax])
 
   const operations=useMemo(
     ()=>Array.from(new Set(reportRows.map(row=>row.operation).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'pt-BR')),
@@ -493,9 +524,22 @@ export default function CphLightPage(){
         <article className="cphl-kpi danger"><span>DIVERGÊNCIAS</span><b>{divergences.toLocaleString('pt-BR')}</b><small>mesma chave com odômetro diferente</small></article>
       </section>
 
+      <section className="cphl-efficiency-config">
+        <div className="cphl-efficiency-copy">
+          <AlertTriangle size={15}/>
+          <div>
+            <b>Faixa de eficiência</b>
+            <span>Ajuste os limites que definem quando um registro recebe X. Os valores ficam salvos neste navegador.</span>
+          </div>
+        </div>
+        <label><span>MÍNIMA (%)</span><input type="number" min="0" max="499" step="1" value={efficiencyMin} onChange={event=>setEfficiencyLimit('min',Number(event.target.value))}/></label>
+        <label><span>MÁXIMA (%)</span><input type="number" min="1" max="500" step="1" value={efficiencyMax} onChange={event=>setEfficiencyLimit('max',Number(event.target.value))}/></label>
+        <button onClick={resetEfficiencyLimits}>Restaurar 50 / 150</button>
+      </section>
+
       <div className="cphl-rule-note">
         <AlertTriangle size={15}/>
-        <span><b>Regra da macro:</b> eficiência abaixo de 50% ou acima de 150% recebe X. Entre 50% e 150%, inclusive, fica dentro do esperado. O relatório é comparado com a base usando placa + data/hora no minuto. Na exportação, todos os registros novos entram no Excel; os X aparecem primeiro e sinalizados na aba principal, além da aba própria para tratamento.</span>
+        <span><b>Regra atual:</b> eficiência abaixo de {efficiencyMin}% ou acima de {efficiencyMax}% recebe X. Entre {efficiencyMin}% e {efficiencyMax}%, inclusive, fica dentro do esperado. O relatório é comparado com a base usando placa + data/hora no minuto. Na exportação, todos os registros novos entram no Excel; os X aparecem primeiro e sinalizados na aba principal, além da aba própria para tratamento.</span>
       </div>
 
       {notice&&<div className={notice.tone==='error'?'cphl-alert error':'cphl-alert'}><span>{notice.text}</span><button onClick={()=>setNotice(null)}>Fechar</button></div>}
