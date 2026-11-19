@@ -5,9 +5,10 @@ import {collection,doc,onSnapshot,serverTimestamp,setDoc,updateDoc} from 'fireba
 import {CheckCircle2,Copy,ShieldCheck,UserPlus,Users,XCircle} from 'lucide-react'
 import {db,firebaseConfig} from './firebase'
 import './TrainingAccounts.css'
+import {RIVORA_PAGE_NAMES,selectedPages,type RivoraPage} from './pageAccess'
 
 type AccountRole='viewer'|'operator'
-type TrainingAccount={id:string;name:string;email:string;role:AccountRole;active:boolean}
+type TrainingAccount={id:string;name:string;email:string;role:AccountRole;active:boolean;pages:RivoraPage[]}
 const safeRole=(value:unknown):AccountRole=>value==='operator'?'operator':'viewer'
 function newPassword(){
   const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%'
@@ -29,6 +30,9 @@ export default function TrainingAccounts(){
   const [name,setName]=useState('')
   const [email,setEmail]=useState('')
   const [role,setRole]=useState<AccountRole>('viewer')
+  const [pages,setPages]=useState<RivoraPage[]>(['Visão geral'])
+  const [editingUid,setEditingUid]=useState('')
+  const [editingPages,setEditingPages]=useState<RivoraPage[]>([])
   const [busy,setBusy]=useState(false)
   const [workingUid,setWorkingUid]=useState('')
   const [notice,setNotice]=useState('')
@@ -40,7 +44,7 @@ export default function TrainingAccounts(){
         const record=item.data()
         if(record.role==='viewer'||record.role==='operator')list.push({
           id:item.id,name:String(record.name||''),email:String(record.email||''),
-          role:safeRole(record.role),active:record.active===true
+          role:safeRole(record.role),active:record.active===true,pages:selectedPages(record.pages)
         })
       })
       setAccounts(list.sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')))
@@ -52,9 +56,29 @@ export default function TrainingAccounts(){
     return unsubscribe
   },[])
   const activeCount=useMemo(()=>accounts.filter(item=>item.active).length,[accounts])
+  function togglePage(page:RivoraPage,selected:RivoraPage[],set:(pages:RivoraPage[])=>void){
+    const next=selected.includes(page)?selected.filter(item=>item!==page):[...selected,page]
+    set(RIVORA_PAGE_NAMES.filter(item=>next.includes(item)))
+  }
+  function pageChoices(selected:RivoraPage[],set:(pages:RivoraPage[])=>void,prefix:string){
+    return <div className="ta-page-selector">
+      <div className="ta-page-actions">
+        <span>{selected.length} de {RIVORA_PAGE_NAMES.length} telas liberadas</span>
+        <button type="button" onClick={()=>set([...RIVORA_PAGE_NAMES])}>Todas</button>
+        <button type="button" onClick={()=>set([])}>Nenhuma</button>
+      </div>
+      <div className="ta-page-grid">
+        {RIVORA_PAGE_NAMES.map(item=><label key={item} className="ta-page-choice" htmlFor={prefix+item}>
+          <input type="checkbox" id={prefix+item} checked={selected.includes(item)}
+            onChange={()=>togglePage(item,selected,set)}/><span>{item}</span>
+        </label>)}
+      </div>
+    </div>
+  }
   async function addUser(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
     if(!ready||busy)return
+    if(!pages.length){setNotice('Marque pelo menos uma tela para liberar o novo usuário.');return}
     const cleanName=name.trim(),cleanEmail=email.trim().toLowerCase()
     if(cleanName.length<2||cleanName.length>100||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail))return
     if(accounts.some(a=>a.email.toLowerCase()===cleanEmail)){
@@ -69,7 +93,7 @@ export default function TrainingAccounts(){
       const created=await createUserWithEmailAndPassword(secondaryAuth,cleanEmail,password)
       try{
         await setDoc(doc(db,'authorizedUsers',created.user.uid),{
-          name:cleanName,email:cleanEmail,role,active:true,
+          name:cleanName,email:cleanEmail,role,active:true,pages,
           createdAt:serverTimestamp(),updatedAt:serverTimestamp()
         })
       }catch(writeError){
@@ -77,7 +101,7 @@ export default function TrainingAccounts(){
         try{await deleteUser(created.user)}catch{/* o perfil não existe: regras ainda negam acesso */}
         throw writeError
       }
-      setName('');setEmail('');setRole('viewer')
+      setName('');setEmail('');setRole('viewer');setPages(['Visão geral'])
       setCredentials({email:cleanEmail,password})
       setNotice('Conta criada e liberada. Copie as credenciais agora, pois a senha não fica salva no RIVORA.')
     }catch(err){setNotice(errorMessage(err))}
@@ -87,16 +111,26 @@ export default function TrainingAccounts(){
       setBusy(false)
     }
   }
-  async function updateAccount(account:TrainingAccount,changes:{active?:boolean;role?:AccountRole}){
-    if(!ready||workingUid)return
+  async function updateAccount(account:TrainingAccount,changes:{active?:boolean;role?:AccountRole;pages?:RivoraPage[]}):Promise<boolean>{
+    if(!ready||workingUid)return false
+    if(changes.pages&&!changes.pages.length){setNotice('Selecione ao menos uma tela ou bloqueie o usuário.');return false}
     setWorkingUid(account.id);setNotice('');setCredentials(null)
     try{
       await updateDoc(doc(db,'authorizedUsers',account.id),{
         ...changes,updatedAt:serverTimestamp()
       })
-      setNotice('Permissão atualizada. O acesso será revogado ou ajustado na próxima consulta autenticada.')
-    }catch(err){setNotice(errorMessage(err))}
+      setNotice('Permissão atualizada. O acesso será ajustado imediatamente após sincronizar o perfil.')
+      return true
+    }catch(err){setNotice(errorMessage(err));return false}
     finally{setWorkingUid('')}
+  }
+  function beginEditing(account:TrainingAccount){
+    if(editingUid===account.id){setEditingUid('');return}
+    setEditingUid(account.id)
+    setEditingPages(account.pages)
+  }
+  async function savePages(account:TrainingAccount){
+    if(await updateAccount(account,{pages:editingPages}))setEditingUid('')
   }
   return <div className="training-accounts">
     <section className="ta-head">
@@ -117,7 +151,12 @@ export default function TrainingAccounts(){
             </select>
           </label>
           {role==='operator'&&<p className="ta-warning">O modo Operacional permite alterações reais no controle de fechamentos e importações. Para treinamento sem riscos, prefira Consulta.</p>}
-          <button className="ta-primary" type="submit" disabled={busy||!ready}>{busy?'Criando...':'Criar login e senha'}</button>
+          <div className="ta-pages-field">
+            <strong>Telas que este usuário poderá acessar</strong>
+            <p>O menu, as buscas e o acesso aos dados seguem as telas selecionadas.</p>
+            {pageChoices(pages,setPages,'ta-new-')}
+          </div>
+          <button className="ta-primary" type="submit" disabled={busy||!ready||!pages.length}>{busy?'Criando...':'Criar login e senha'}</button>
         </form>
         {loadError&&<p className="ta-error"><XCircle size={15}/>{loadError}</p>}
         {notice&&<p className="ta-message" role="status">{notice}</p>}
@@ -147,6 +186,19 @@ export default function TrainingAccounts(){
                 {account.active?'Bloquear':'Liberar'}
               </button>
             </div>
+            <div className="ta-page-user-controls">
+              <span>{account.pages.length} tela(s) permitida(s)</span>
+              <button type="button" className="ta-edit-pages" disabled={!!workingUid}
+                aria-expanded={editingUid===account.id}
+                onClick={()=>beginEditing(account)}>
+                {editingUid===account.id?'Fechar edição':'Definir telas'}
+              </button>
+            </div>
+            {editingUid===account.id&&<div className="ta-pages-editor">
+              {pageChoices(editingPages,setEditingPages,'ta-edit-'+account.id+'-')}
+              <button type="button" className="ta-primary" disabled={!!workingUid||!editingPages.length}
+                onClick={()=>void savePages(account)}>Salvar telas permitidas</button>
+            </div>}
             <small className={account.active?'ta-status active':'ta-status'}>{account.active?'Ativo':'Bloqueado'}</small>
           </article>)}
         </div>
