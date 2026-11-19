@@ -3,7 +3,7 @@ import {initializeApp,deleteApp} from 'firebase/app'
 import {createUserWithEmailAndPassword,deleteUser,getAuth,signOut} from 'firebase/auth'
 import {collection,doc,onSnapshot,serverTimestamp,setDoc,updateDoc} from 'firebase/firestore'
 import {CheckCircle2,Copy,ShieldCheck,UserPlus,Users,XCircle} from 'lucide-react'
-import {auth,db,firebaseConfig} from './firebase'
+import {db,firebaseConfig} from './firebase'
 import './TrainingAccounts.css'
 
 type AccountRole='viewer'|'operator'
