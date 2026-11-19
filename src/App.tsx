@@ -10,9 +10,11 @@ import { collection, doc, onSnapshot, serverTimestamp, Timestamp, writeBatch } f
 import './App.css'
 import { auth, db } from './firebase'
 import CphLightPage from './CphLightPage'
+import TrainingAccounts from './TrainingAccounts'
 
-type Page = 'Visão geral' | 'Relatórios' | 'Tarefas' | 'Automações' | 'Fechamentos e Importações' | 'Responsáveis' | 'Retornos' | 'Análises' | 'CPH Frota Leve' | 'Histórico'
+type Page = 'Visão geral' | 'Relatórios' | 'Tarefas' | 'Automações' | 'Fechamentos e Importações' | 'Responsáveis' | 'Retornos' | 'Análises' | 'CPH Frota Leve' | 'Histórico' | 'Configurações'
 type Theme='dark'|'light'
+type AccessProfile={role:string;active?:boolean;name?:string;email?:string}
 type Task = { id:number; title:string; meta:string; done:boolean; due:string }
 type Closure = { op:string; period:string; records:number; status:string; next:string }
 
@@ -159,6 +161,9 @@ const SEARCH_ITEMS:Array<{label:string;detail:string;page:Page}> = [
 function App(){
   const [user,setUser]=useState<User|null>(null)
   const [authReady,setAuthReady]=useState(false)
+  const [access,setAccess]=useState<AccessProfile|null>(null)
+  const [accessReady,setAccessReady]=useState(false)
+  const [accessError,setAccessError]=useState(false)
   const [theme,setTheme]=useState<Theme>(()=>{
     const saved=localStorage.getItem('rivora.theme')
     return saved==='light'?'light':'dark'
@@ -175,9 +180,29 @@ function App(){
     setAuthReady(true)
   }),[])
 
-  if(!authReady) return <div className="auth-shell"><div className="auth-card auth-loading"><img src={`${import.meta.env.BASE_URL}rivora-mark.svg`} alt=""/><b>Carregando RIVORA...</b></div></div>
-  if(!user) return <LoginPage/>
-  return <DashboardApp theme={theme} setTheme={setTheme}/>
+  useEffect(()=>{
+    setAccess(null);setAccessError(false);setAccessReady(!user)
+    if(!user)return
+    return onSnapshot(doc(db,'authorizedUsers',user.uid),snapshot=>{
+      const current=snapshot.exists()?snapshot.data():null
+      setAccess(current?{
+        role:String(current.role||''),active:current.active,
+        name:typeof current.name==='string'?current.name:'',
+        email:typeof current.email==='string'?current.email:''
+      }:null)
+      setAccessError(false);setAccessReady(true)
+    },()=>{setAccess(null);setAccessError(true);setAccessReady(true)})
+  },[user])
+  if(!authReady|| (user&&!accessReady)) return <div className="auth-shell"><div className="auth-card auth-loading"><img src={`${import.meta.env.BASE_URL}rivora-mark.svg`} alt=""/><b>Verificando seu acesso ao RIVORA...</b></div></div>
+  if(!user)return <LoginPage/>
+  const authorized=access?.role==='admin'||(access?.active===true&&['viewer','operator'].includes(access.role))
+  if(!authorized)return <div className="auth-shell"><div className="auth-card">
+    <div className="auth-brand"><img src={`${import.meta.env.BASE_URL}rivora-mark.svg`} alt=""/><strong>RIVORA</strong></div>
+    <div className="auth-copy"><span>ACESSO RESTRITO</span><h1>Conta sem acesso liberado</h1>
+      <p>{accessError?'Não foi possível conferir seu acesso no Firebase.':'Solicite ao administrador para liberar sua conta de treinamento.'}</p></div>
+    <button type="button" onClick={()=>void signOut(auth)}>Voltar ao login</button>
+  </div></div>
+  return <DashboardApp theme={theme} setTheme={setTheme} account={access!} email={user.email||''}/>
 }
 
 function LoginPage(){
@@ -209,12 +234,13 @@ function LoginPage(){
       <label><span>SENHA</span><input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} required/></label>
       {error&&<div className="auth-error">{error}</div>}
       <button type="submit" disabled={loading}>{loading?'Entrando...':'Entrar'}</button>
-      <small>Seu acesso administrativo é autenticado. Colaboradores cadastrados como responsáveis não recebem login no RIVORA.</small>
+      <small>O acesso depende de autorização do administrador. Contas de treinamento podem ter acesso de consulta ou operacional.</small>
     </form>
   </div>
 }
 
-function DashboardApp({theme,setTheme}:{theme:Theme;setTheme:(theme:Theme)=>void}){
+function DashboardApp({theme,setTheme,account,email}:{theme:Theme;setTheme:(theme:Theme)=>void;account:AccessProfile;email:string}){
+  const isAdmin=account.role==='admin'
   const [page,setPage]=useState<Page>('Visão geral')
   const [query,setQuery]=useState('')
   const [searchOpen,setSearchOpen]=useState(false)
@@ -277,7 +303,7 @@ function DashboardApp({theme,setTheme}:{theme:Theme;setTheme:(theme:Theme)=>void
     <aside className="sidebar">
       <div className="brand"><div className="brand-icon-wrap"><img src={`${import.meta.env.BASE_URL}rivora-mark.svg`} className="brand-mark" alt=""/><i className="brand-scan"/></div><div><strong>RIVORA</strong><span>Operation Automation System</span></div></div>
       <nav className="nav"><small>NAVEGAÇÃO</small>{NAV_ITEMS.map(([label,Icon])=><button key={label} className={page===label?'nav-item active':'nav-item'} onClick={()=>setPage(label)}><Icon size={18} strokeWidth={1.7}/><span>{label}</span>{label==='Tarefas'&&<b>{tasks.filter(t=>!t.done).length}</b>}</button>)}</nav>
-      <div className="side-foot"><div className="mode-card"><i/><div><strong>Firebase protegido</strong><span>Sincronização autenticada</span></div></div><button className="nav-item"><Settings size={18}/><span>Configurações</span></button></div>
+      <div className="side-foot"><div className="mode-card"><i/><div><strong>Firebase protegido</strong><span>Sincronização autenticada</span></div></div>{isAdmin&&<button className={page==='Configurações'?'nav-item active':'nav-item'} onClick={()=>setPage('Configurações')}><Settings size={18}/><span>Configurações</span></button>}</div>
     </aside>
     <main className="main">
       <header className="topbar">
@@ -296,7 +322,7 @@ function DashboardApp({theme,setTheme}:{theme:Theme;setTheme:(theme:Theme)=>void
             <span>{theme==='dark'?'Escuro':'Claro'}</span>
           </button>
           <button className={notificationsOpen?'icon-button active':'icon-button'} aria-label="Notificações" onClick={()=>{setNotificationsOpen(v=>!v);setSearchOpen(false)}}><Bell size={18}/><i className="notification-dot"/></button>
-          <div className="user-chip"><span>RV</span><div><strong>Conta autenticada</strong><small>Acesso protegido</small></div></div>
+          <div className="user-chip"><span>{isAdmin?'RV':'TR'}</span><div><strong>{account.name||email.split('@')[0]}</strong><small>{isAdmin?'Administrador':account.role==='operator'?'Treinamento operacional':'Treinamento · consulta'}</small></div></div>
           <button className="logout-button" onClick={()=>void signOut(auth)} title="Sair"><LogOut size={16}/></button>
         </div>
       </header>
@@ -330,6 +356,7 @@ function DashboardApp({theme,setTheme}:{theme:Theme;setTheme:(theme:Theme)=>void
         {page==='Análises'&&<AnalyticsPage/>}
         {page==='CPH Frota Leve'&&<CphLightPage/>}
         {page==='Histórico'&&<HistoryPage/>}
+        {page==='Configurações'&&isAdmin&&<TrainingAccounts/>}
       </section>
     </main>
   </div>
@@ -945,7 +972,7 @@ function ResponsiblesPage(){
     <div className="responsible-summary">
       <div><span>CADASTRADOS</span><b>{responsibles.length}</b><small>{active.length} ativos</small></div>
       <div><span>OPERAÇÕES VINCULADAS</span><b>{assigned}</b><small>{OPERATION_DEFINITIONS.length-assigned} sem responsável</small></div>
-      <div><span>ACESSO AO RIVORA</span><b>1 admin</b><small>Colaboradores não recebem usuário ou senha</small></div>
+      <div><span>ACESSO AO RIVORA</span><b>Controlado</b><small>Logins de treinamento são gerenciados em Configurações</small></div>
     </div>
 
     <form className="responsible-form" onSubmit={createResponsible}>
