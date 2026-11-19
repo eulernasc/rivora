@@ -11,10 +11,11 @@ import './App.css'
 import { auth, db } from './firebase'
 import CphLightPage from './CphLightPage'
 import TrainingAccounts from './TrainingAccounts'
+import {RIVORA_PAGE_NAMES,selectedPages,type RivoraPage} from './pageAccess'
 
-type Page = 'Visão geral' | 'Relatórios' | 'Tarefas' | 'Automações' | 'Fechamentos e Importações' | 'Responsáveis' | 'Retornos' | 'Análises' | 'CPH Frota Leve' | 'Histórico' | 'Configurações'
+type Page = RivoraPage | 'Configurações'
 type Theme='dark'|'light'
-type AccessProfile={role:string;active?:boolean;name?:string;email?:string}
+type AccessProfile={role:string;active?:boolean;name?:string;email?:string;pages?:RivoraPage[]}
 type Task = { id:number; title:string; meta:string; done:boolean; due:string }
 type Closure = { op:string; period:string; records:number; status:string; next:string }
 
@@ -188,14 +189,15 @@ function App(){
       setAccess(current?{
         role:String(current.role||''),active:current.active,
         name:typeof current.name==='string'?current.name:'',
-        email:typeof current.email==='string'?current.email:''
+        email:typeof current.email==='string'?current.email:'',
+        pages:selectedPages(current.pages)
       }:null)
       setAccessError(false);setAccessReady(true)
     },()=>{setAccess(null);setAccessError(true);setAccessReady(true)})
   },[user])
   if(!authReady|| (user&&!accessReady)) return <div className="auth-shell"><div className="auth-card auth-loading"><img src={`${import.meta.env.BASE_URL}rivora-mark.svg`} alt=""/><b>Verificando seu acesso ao RIVORA...</b></div></div>
   if(!user)return <LoginPage/>
-  const authorized=access?.role==='admin'||(access?.active===true&&['viewer','operator'].includes(access.role))
+  const authorized=access?.role==='admin'||(access?.active===true&&['viewer','operator'].includes(access.role)&&!!access.pages?.length)
   if(!authorized)return <div className="auth-shell"><div className="auth-card">
     <div className="auth-brand"><img src={`${import.meta.env.BASE_URL}rivora-mark.svg`} alt=""/><strong>RIVORA</strong></div>
     <div className="auth-copy"><span>ACESSO RESTRITO</span><h1>Conta sem acesso liberado</h1>
@@ -241,7 +243,14 @@ function LoginPage(){
 
 function DashboardApp({theme,setTheme,account,email}:{theme:Theme;setTheme:(theme:Theme)=>void;account:AccessProfile;email:string}){
   const isAdmin=account.role==='admin'
-  const [page,setPage]=useState<Page>('Visão geral')
+  const allowedPages=RIVORA_PAGE_NAMES.filter(name=>isAdmin||account.pages?.includes(name))
+  const [requestedPage,setRequestedPage]=useState<Page>('Visão geral')
+  // A rota também é validada: buscas, atalhos e atualizações de permissão não a contornam.
+  const page:Page=requestedPage==='Configurações'&&isAdmin?'Configurações'
+    :requestedPage!=='Configurações'&&allowedPages.includes(requestedPage)?requestedPage:allowedPages[0]
+  const setPage=(next:Page)=>{
+    if(next==='Configurações'?isAdmin:allowedPages.includes(next))setRequestedPage(next)
+  }
   const [query,setQuery]=useState('')
   const [searchOpen,setSearchOpen]=useState(false)
   const [notificationsOpen,setNotificationsOpen]=useState(false)
@@ -271,8 +280,9 @@ function DashboardApp({theme,setTheme,account,email}:{theme:Theme;setTheme:(them
   const today=useMemo(()=>new Intl.DateTimeFormat('pt-BR',{weekday:'long',day:'2-digit',month:'long'}).format(new Date()),[])
   const searchResults=useMemo(()=>{
     const term=query.trim().toLocaleLowerCase('pt-BR')
-    return term?SEARCH_ITEMS.filter(item=>(item.label+' '+item.detail).toLocaleLowerCase('pt-BR').includes(term)):SEARCH_ITEMS.slice(0,6)
-  },[query])
+    const visible=SEARCH_ITEMS.filter(item=>allowedPages.includes(item.page as RivoraPage))
+    return term?visible.filter(item=>(item.label+' '+item.detail).toLocaleLowerCase('pt-BR').includes(term)):visible.slice(0,6)
+  },[query,allowedPages.join('|')])
   const navigateFromSearch=(target:Page)=>{ setPage(target); setSearchOpen(false); setQuery('') }
   const installApp=async()=>{
     if(window.matchMedia('(display-mode: standalone)').matches){
@@ -302,7 +312,7 @@ function DashboardApp({theme,setTheme,account,email}:{theme:Theme;setTheme:(them
   return <div className="app-shell">
     <aside className="sidebar">
       <div className="brand"><div className="brand-icon-wrap"><img src={`${import.meta.env.BASE_URL}rivora-mark.svg`} className="brand-mark" alt=""/><i className="brand-scan"/></div><div><strong>RIVORA</strong><span>Operation Automation System</span></div></div>
-      <nav className="nav"><small>NAVEGAÇÃO</small>{NAV_ITEMS.map(([label,Icon])=><button key={label} className={page===label?'nav-item active':'nav-item'} onClick={()=>setPage(label)}><Icon size={18} strokeWidth={1.7}/><span>{label}</span>{label==='Tarefas'&&<b>{tasks.filter(t=>!t.done).length}</b>}</button>)}</nav>
+      <nav className="nav"><small>NAVEGAÇÃO</small>{NAV_ITEMS.filter(([label])=>allowedPages.includes(label as RivoraPage)).map(([label,Icon])=><button key={label} className={page===label?'nav-item active':'nav-item'} onClick={()=>setPage(label)}><Icon size={18} strokeWidth={1.7}/><span>{label}</span>{label==='Tarefas'&&<b>{tasks.filter(t=>!t.done).length}</b>}</button>)}</nav>
       <div className="side-foot"><div className="mode-card"><i/><div><strong>Firebase protegido</strong><span>Sincronização autenticada</span></div></div>{isAdmin&&<button className={page==='Configurações'?'nav-item active':'nav-item'} onClick={()=>setPage('Configurações')}><Settings size={18}/><span>Configurações</span></button>}</div>
     </aside>
     <main className="main">
