@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
-const firebaseConfig={
+export const firebaseConfig={
   apiKey:'AIzaSyBddExv3Wzmg4Cr0WPUIQ6pbpKHYLBTJR4',
   authDomain:'rivora-8643e.firebaseapp.com',
   projectId:'rivora-8643e',
