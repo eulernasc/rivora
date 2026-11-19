@@ -41,3 +41,30 @@
 .ta-unblock{border:1px solid #39775e;background:rgba(32,170,112,.1);color:#75dfb0}
 .ta-status{font-size:11px;color:#ed818e}.ta-status.active{color:#6ed9ab}
 @media(max-width:920px){.ta-columns{grid-template-columns:1fr}}@media(max-width:530px){.ta-head{align-items:flex-start}.ta-panel{padding:15px}.ta-head h2{font-size:22px}.ta-total{padding:10px 12px}}
+
+
+/* Seleção individual das telas autorizadas para cada login */
+.ta-pages-field{padding:14px;border:1px solid var(--border,#33414f);border-radius:12px;min-width:0}
+.ta-pages-field>strong{display:block;font-size:12px;margin-bottom:4px}
+.ta-pages-field>p{font-size:11px;line-height:1.45;color:var(--text-secondary,#9cabbc);margin:0 0 12px}
+.ta-page-selector{display:grid;gap:11px;min-width:0}
+.ta-page-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:6px}
+.ta-page-actions span{font-size:11px;color:var(--text-secondary,#9cacbd);margin-right:auto}
+.ta-page-actions button,.ta-edit-pages{color:#ffb08e;background:rgba(235,108,61,.08);
+  border:1px solid rgba(235,108,61,.35);border-radius:8px;padding:7px 10px;cursor:pointer;
+  font-size:11px;font-weight:800}
+.ta-page-actions button:hover,.ta-edit-pages:hover{background:rgba(235,108,61,.18)}
+.ta-page-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.ta-panel label.ta-page-choice{display:flex;align-items:center;gap:9px;font-size:11px;
+  font-weight:650;line-height:1.35;border:1px solid var(--border,#374451);border-radius:9px;
+  padding:10px 9px;cursor:pointer;min-width:0}
+.ta-panel label.ta-page-choice:has(input:checked){background:rgba(236,105,60,.095);border-color:rgba(236,105,60,.5)}
+.ta-page-choice span{min-width:0;overflow-wrap:anywhere}
+.ta-panel .ta-page-choice input[type=checkbox]{width:16px;height:16px;min-width:16px;max-width:16px;
+  margin:0;padding:0;border:0;accent-color:#ed6b40;cursor:pointer}
+.ta-page-user-controls{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.ta-page-user-controls span{font-size:11px;color:var(--text-secondary,#9cabbc)}
+.ta-pages-editor{padding:13px;border:1px solid rgba(235,108,61,.32);border-radius:11px;
+  display:grid;gap:13px;background:rgba(235,108,61,.045)}
+.ta-pages-editor>.ta-primary{justify-self:start}
+@media(max-width:530px){.ta-page-grid{grid-template-columns:1fr}}
