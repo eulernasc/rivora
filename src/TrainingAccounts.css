@@ -1,0 +1,43 @@
+.training-accounts{max-width:1180px;margin:0 auto;padding:6px 0 36px;color:var(--text-primary,#edf3fb)}
+.ta-head{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:25px}
+.ta-eyebrow{display:block;color:#fa966e;font-size:11px;letter-spacing:.12em;font-weight:800;margin-bottom:8px}
+.ta-head h2{font-size:26px;margin:0 0 9px;font-weight:800}
+.ta-head p{font-size:13px;line-height:1.55;color:var(--text-secondary,#8e9cad);margin:0}
+.ta-total{display:flex;align-items:center;gap:9px;border:1px solid var(--border,#283442);border-radius:14px;padding:14px 19px;background:var(--card-bg,#17212d);white-space:nowrap}
+.ta-total svg{color:#ff854e}.ta-total strong{font-size:21px}.ta-total span{color:#9aacbe;font-size:12px}
+.ta-columns{display:grid;grid-template-columns:minmax(280px,0.95fr) minmax(300px,1.05fr);align-items:start;gap:18px}
+.ta-panel{padding:22px;border:1px solid var(--border,#2e3946);background:var(--card-bg,#141d27);border-radius:16px;min-width:0}
+.ta-panel>header{display:flex;align-items:center;gap:11px;margin-bottom:22px}
+.ta-panel>header svg{color:#ff8450}
+.ta-panel>header h3{font-size:16px;font-weight:800;margin:0 0 4px}
+.ta-panel>header small{font-size:11px;color:var(--text-secondary,#90a0b1)}
+.ta-panel form{display:grid;gap:15px}
+.ta-panel label{display:grid;gap:7px;font-size:12px;font-weight:750}
+.ta-panel input,.ta-panel select,.ta-user-bottom select{height:44px;width:100%;min-width:0;padding:0 12px;border:1px solid #3a4654;border-radius:10px;background:var(--input-bg,#101821);color:var(--text-primary,#f3f5f7);font:500 13px inherit}
+.ta-panel input:focus,.ta-panel select:focus,.ta-user-bottom select:focus{outline:2px solid rgba(240,112,64,.28);border-color:#e56838}
+.ta-primary{height:43px;padding:0 15px;background:#ec673c;color:#fff;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer}
+.ta-primary:hover{background:#f57b4c}.ta-primary:disabled,.ta-user button:disabled{opacity:.5;cursor:not-allowed}
+.ta-warning{color:#ffbc83;background:rgba(237,124,62,.11);border:1px solid rgba(237,124,62,.3);border-radius:10px;padding:12px;font-size:12px;line-height:1.55;margin:0}
+.ta-error,.ta-message{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5;border-radius:9px;padding:10px 12px;margin:14px 0 0}
+.ta-error{color:#ff9494;background:rgba(235,82,89,.10)}.ta-message{color:var(--text-primary,#edf3fb);background:rgba(70,151,204,.11)}
+.ta-credentials{border:1px solid #39775e;background:rgba(36,166,109,.09);border-radius:12px;padding:16px;margin-top:17px;font-size:12px}
+.ta-credentials-header{display:flex;align-items:center;gap:8px;color:#69dba8;margin-bottom:12px}
+.ta-credentials p{display:grid;gap:4px;margin:10px 0}
+.ta-credentials p span,.ta-credentials small{color:var(--text-secondary,#9aabbc)}
+.ta-credentials p b{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px;overflow-wrap:anywhere}
+.ta-credentials button{display:flex;align-items:center;gap:8px;padding:10px 13px;margin:14px 0;background:#1c5e4c;color:#fff;border:0;border-radius:9px;font-weight:700;cursor:pointer}
+.ta-credentials small{display:block;line-height:1.4}
+.ta-muted{color:var(--text-secondary,#91a0b0);font-size:13px}
+.ta-users{display:grid;gap:10px;max-height:640px;overflow:auto}
+.ta-user{border:1px solid var(--border,#34404b);padding:14px;border-radius:12px;background:var(--card-bg,#101923);display:grid;gap:12px}
+.ta-person{display:flex;gap:11px;align-items:center;min-width:0}
+.ta-person>span{flex-shrink:0;width:36px;height:36px;display:grid;place-items:center;border-radius:10px;color:#ff975f;background:rgba(238,112,64,.13);font-size:14px;font-weight:800}
+.ta-person>div{display:grid;gap:3px;min-width:0}.ta-person strong{font-size:13px;overflow-wrap:anywhere}
+.ta-person small{font-size:11px;color:var(--text-secondary,#92a2b4);overflow-wrap:anywhere}
+.ta-user-bottom{display:flex;justify-content:space-between;gap:10px}
+.ta-user-bottom select{max-width:185px;height:37px}
+.ta-user-bottom button{min-width:86px;padding:8px 12px;font-size:12px;font-weight:800;border-radius:9px;cursor:pointer}
+.ta-block{border:1px solid #a34854;background:rgba(195,63,82,.12);color:#ff8f99}
+.ta-unblock{border:1px solid #39775e;background:rgba(32,170,112,.1);color:#75dfb0}
+.ta-status{font-size:11px;color:#ed818e}.ta-status.active{color:#6ed9ab}
+@media(max-width:920px){.ta-columns{grid-template-columns:1fr}}@media(max-width:530px){.ta-head{align-items:flex-start}.ta-panel{padding:15px}.ta-head h2{font-size:22px}.ta-total{padding:10px 12px}}
