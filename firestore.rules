@@ -11,11 +11,40 @@ service cloud.firestore {
     }
 
     function authorized() {
-      return signedIn() && exists(userPath());
+      return signedIn() && exists(userPath())
+        && (!('active' in get(userPath()).data)
+          || get(userPath()).data.active == true);
     }
 
     function roleIs(role) {
       return authorized() && get(userPath()).data.role == role;
+    }
+
+    function canView() {
+      return roleIs('admin') || roleIs('viewer') || roleIs('operator');
+    }
+
+    function canOperate() {
+      return roleIs('admin') || roleIs('operator');
+    }
+
+    function validTrainingUser() {
+      return request.resource.data.keys().hasOnly([
+          'name','email','role','active','createdAt','updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'name','email','role','active','createdAt','updatedAt'
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 100
+        && request.resource.data.email is string
+        && request.resource.data.email.size() >= 5
+        && request.resource.data.email.size() <= 254
+        && request.resource.data.role in ['viewer','operator']
+        && request.resource.data.active is bool
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
     }
 
     function validCycle(cycle) {
@@ -202,20 +231,27 @@ service cloud.firestore {
     }
 
     match /authorizedUsers/{uid} {
-      allow read: if signedIn() && request.auth.uid == uid;
-      allow write: if false;
+      allow get: if (signedIn() && request.auth.uid == uid) || roleIs('admin');
+      allow list: if roleIs('admin');
+      allow create: if roleIs('admin') && validTrainingUser();
+      allow update: if roleIs('admin')
+        && resource.data.role in ['viewer','operator']
+        && validTrainingUser()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['role','active','updatedAt']);
+      allow delete: if false;
     }
 
     match /responsibles/{responsibleId} {
-      allow list, get: if roleIs('admin');
+      allow list, get: if canView();
       allow create: if roleIs('admin') && validResponsibleDocument(true);
       allow update: if roleIs('admin') && validResponsibleDocument(false);
       allow delete: if false;
     }
 
     match /operationAssignments/{operationId} {
-      allow list: if roleIs('admin');
-      allow get: if roleIs('admin') && validOperation(operationId);
+      allow list: if canView();
+      allow get: if canView() && validOperation(operationId);
       allow create, update: if roleIs('admin')
         && validOperation(operationId)
         && validAssignment();
@@ -223,8 +259,8 @@ service cloud.firestore {
     }
 
     match /closingCycles/{cycle}/operations/{operationId} {
-      allow list: if roleIs('admin') && validCycle(cycle);
-      allow get: if roleIs('admin') && validCycle(cycle) && validOperation(operationId);
+      allow list: if canView() && validCycle(cycle);
+      allow get: if canView() && validCycle(cycle) && validOperation(operationId);
       allow create, update: if roleIs('bridge')
         && validCycle(cycle)
         && validOperation(operationId)
@@ -233,20 +269,20 @@ service cloud.firestore {
     }
 
     match /closingCycles/{cycle}/fronts/{frontId} {
-      allow list: if roleIs('admin') && validCycle(cycle);
-      allow get: if roleIs('admin') && validCycle(cycle) && validFront(frontId);
+      allow list: if canView() && validCycle(cycle);
+      allow get: if canView() && validCycle(cycle) && validFront(frontId);
 
       allow create: if validCycle(cycle)
         && validFront(frontId)
         && (
-          (roleIs('admin') && validFrontDocument())
+          (canOperate() && validFrontDocument())
           || (roleIs('bridge') && validBridgeFrontCreate())
         );
 
       allow update: if validCycle(cycle)
         && validFront(frontId)
         && (
-          (roleIs('admin') && validFrontDocument())
+          (canOperate() && validFrontDocument())
           || (roleIs('bridge') && validBridgeFrontUpdate())
         );
 
