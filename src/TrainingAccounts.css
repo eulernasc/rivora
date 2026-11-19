@@ -89,3 +89,11 @@
 .ta-user .ta-password-reset:hover{background:rgba(67,142,199,.18)}
 .ta-user .ta-password-reset:disabled{opacity:.5;cursor:not-allowed}
 @media(max-width:520px){.ta-password-input-row{flex-wrap:wrap}.ta-password-input-row input{flex-basis:100%}}
+
+
+.ta-password-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.ta-password-edit{display:grid;gap:12px;border:1px solid rgba(89,158,209,.28);border-radius:10px;
+  padding:13px;background:rgba(89,158,209,.045)}
+.ta-password-edit p{font-size:11px;line-height:1.55;margin:0;color:var(--text-secondary,#9eafc1)}
+.ta-password-edit>.ta-primary{justify-self:start}
+.ta-password-edit label{display:grid;gap:6px;font-size:11px}
