@@ -20,20 +20,37 @@ service cloud.firestore {
       return authorized() && get(userPath()).data.role == role;
     }
 
-    function canView() {
-      return roleIs('admin') || roleIs('viewer') || roleIs('operator');
+    // O banco verifica as telas explicitamente autorizadas pelo administrador.
+    function pageAllowed(page) {
+      return roleIs('admin') || (
+        authorized()
+        && get(userPath()).data.role in ['viewer','operator']
+        && ('pages' in get(userPath()).data)
+        && get(userPath()).data.pages is list
+        && page in get(userPath()).data.pages
+      );
+    }
+
+    function canReadOperations() {
+      return pageAllowed('Visão geral') || pageAllowed('Fechamentos e Importações');
+    }
+
+    function canReadResponsibles() {
+      return canReadOperations() || pageAllowed('Responsáveis');
     }
 
     function canOperate() {
-      return roleIs('admin') || roleIs('operator');
+      return roleIs('admin') || (
+        roleIs('operator') && pageAllowed('Fechamentos e Importações')
+      );
     }
 
     function validTrainingUser() {
       return request.resource.data.keys().hasOnly([
-          'name','email','role','active','createdAt','updatedAt'
+          'name','email','role','active','pages','createdAt','updatedAt'
         ])
         && request.resource.data.keys().hasAll([
-          'name','email','role','active','createdAt','updatedAt'
+          'name','email','role','active','pages','createdAt','updatedAt'
         ])
         && request.resource.data.name is string
         && request.resource.data.name.size() >= 2
@@ -43,6 +60,14 @@ service cloud.firestore {
         && request.resource.data.email.size() <= 254
         && request.resource.data.role in ['viewer','operator']
         && request.resource.data.active is bool
+        && request.resource.data.pages is list
+        && request.resource.data.pages.size() >= 1
+        && request.resource.data.pages.size() <= 10
+        && request.resource.data.pages.hasOnly([
+          'Visão geral','Relatórios','Tarefas','Automações',
+          'Fechamentos e Importações','Responsáveis','Retornos',
+          'Análises','CPH Frota Leve','Histórico'
+        ])
         && request.resource.data.createdAt is timestamp
         && request.resource.data.updatedAt is timestamp;
     }
@@ -238,20 +263,20 @@ service cloud.firestore {
         && resource.data.role in ['viewer','operator']
         && validTrainingUser()
         && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['role','active','updatedAt']);
+          .hasOnly(['role','active','pages','updatedAt']);
       allow delete: if false;
     }
 
     match /responsibles/{responsibleId} {
-      allow list, get: if canView();
+      allow list, get: if canReadResponsibles();
       allow create: if roleIs('admin') && validResponsibleDocument(true);
       allow update: if roleIs('admin') && validResponsibleDocument(false);
       allow delete: if false;
     }
 
     match /operationAssignments/{operationId} {
-      allow list: if canView();
-      allow get: if canView() && validOperation(operationId);
+      allow list: if canReadResponsibles();
+      allow get: if canReadResponsibles() && validOperation(operationId);
       allow create, update: if roleIs('admin')
         && validOperation(operationId)
         && validAssignment();
@@ -259,8 +284,8 @@ service cloud.firestore {
     }
 
     match /closingCycles/{cycle}/operations/{operationId} {
-      allow list: if canView() && validCycle(cycle);
-      allow get: if canView() && validCycle(cycle) && validOperation(operationId);
+      allow list: if canReadOperations() && validCycle(cycle);
+      allow get: if canReadOperations() && validCycle(cycle) && validOperation(operationId);
       allow create, update: if roleIs('bridge')
         && validCycle(cycle)
         && validOperation(operationId)
@@ -269,8 +294,8 @@ service cloud.firestore {
     }
 
     match /closingCycles/{cycle}/fronts/{frontId} {
-      allow list: if canView() && validCycle(cycle);
-      allow get: if canView() && validCycle(cycle) && validFront(frontId);
+      allow list: if canReadOperations() && validCycle(cycle);
+      allow get: if canReadOperations() && validCycle(cycle) && validFront(frontId);
 
       allow create: if validCycle(cycle)
         && validFront(frontId)
