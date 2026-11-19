@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useState,type FormEvent} from 'react'
 import {initializeApp,deleteApp} from 'firebase/app'
-import {createUserWithEmailAndPassword,deleteUser,getAuth,signOut,sendPasswordResetEmail} from 'firebase/auth'
+import {createUserWithEmailAndPassword,deleteUser,getAuth,signOut,sendPasswordResetEmail,signInWithEmailAndPassword,updatePassword} from 'firebase/auth'
 import {collection,doc,onSnapshot,serverTimestamp,setDoc,updateDoc} from 'firebase/firestore'
 import {CheckCircle2,Copy,ShieldCheck,UserPlus,Users,XCircle} from 'lucide-react'
 import {auth,db,firebaseConfig} from './firebase'
@@ -38,6 +38,10 @@ export default function TrainingAccounts(){
   const [busy,setBusy]=useState(false)
   const [workingUid,setWorkingUid]=useState('')
   const [resetUid,setResetUid]=useState('')
+  const [passwordEditorUid,setPasswordEditorUid]=useState('')
+  const [currentPassword,setCurrentPassword]=useState('')
+  const [replacementPassword,setReplacementPassword]=useState('')
+  const [passwordChangeBusy,setPasswordChangeBusy]=useState(false)
   const [notice,setNotice]=useState('')
   const [credentials,setCredentials]=useState<{email:string;password:string}|null>(null)
   useEffect(()=>{
@@ -144,6 +148,37 @@ export default function TrainingAccounts(){
         :'Não foi possível enviar a redefinição. Confira o provedor de e-mail/senha e os modelos de e-mail do Firebase.')
     }finally{setResetUid('')}
   }
+  function togglePasswordEditor(uid:string){
+    setNotice('');setCredentials(null)
+    setPasswordEditorUid(openUid=>openUid===uid?'':uid)
+    setCurrentPassword('');setReplacementPassword('')
+  }
+  async function changePassword(account:TrainingAccount,event:FormEvent<HTMLFormElement>){
+    event.preventDefault()
+    if(passwordChangeBusy||resetUid||workingUid||busy)return
+    if(!currentPassword||replacementPassword.length<8||replacementPassword.length>72){
+      setNotice('Informe a senha atual e uma nova senha de 8 a 72 caracteres.');return
+    }
+    setPasswordChangeBusy(true);setNotice('');setCredentials(null)
+    const app=initializeApp(firebaseConfig,'rivora-password-change-'+crypto.randomUUID())
+    const secondaryAuth=getAuth(app)
+    try{
+      const signed=await signInWithEmailAndPassword(secondaryAuth,account.email,currentPassword)
+      if(signed.user.uid!==account.id)throw Error('UID não corresponde ao usuário selecionado.')
+      await updatePassword(signed.user,replacementPassword)
+      setCurrentPassword('');setReplacementPassword('');setPasswordEditorUid('')
+      setNotice('Senha de '+account.name+' alterada com sucesso no Firebase Authentication.')
+    }catch(err){
+      const code=typeof err==='object'&&err!==null&&'code' in err?String(err.code):''
+      setNotice(code==='auth/invalid-credential'||code==='auth/wrong-password'
+        ?'Senha atual incorreta. Se não souber a senha, envie a recuperação por e-mail.'
+        :'Não foi possível alterar a senha. Confira o acesso da conta ou envie a redefinição por e-mail.')
+    }finally{
+      try{await signOut(secondaryAuth)}catch{/* sessão secundária descartada */}
+      await deleteApp(app)
+      setPasswordChangeBusy(false)
+    }
+  }
   function beginEditing(account:TrainingAccount){
     if(editingUid===account.id){setEditingUid('');return}
     setEditingUid(account.id)
@@ -228,11 +263,32 @@ export default function TrainingAccounts(){
             </div>
             <div className="ta-password-reset-row">
               <span>Senha de acesso</span>
-              <button type="button" className="ta-password-reset" disabled={!!resetUid||!!workingUid||busy}
-                onClick={()=>void requestPasswordReset(account)}>
-                {resetUid===account.id?'Enviando...':'Enviar link para alterar senha'}
-              </button>
+              <div className="ta-password-actions">
+                <button type="button" className="ta-password-reset" disabled={!!resetUid||!!workingUid||busy||passwordChangeBusy}
+                  onClick={()=>togglePasswordEditor(account.id)}>
+                  {passwordEditorUid===account.id?'Cancelar':'Alterar senha'}
+                </button>
+                <button type="button" className="ta-password-reset" disabled={!!resetUid||!!workingUid||busy||passwordChangeBusy}
+                  onClick={()=>void requestPasswordReset(account)}>
+                  {resetUid===account.id?'Enviando...':'Enviar recuperação por e-mail'}
+                </button>
+              </div>
             </div>
+            {passwordEditorUid===account.id&&<form className="ta-password-edit" onSubmit={e=>void changePassword(account,e)}>
+              <p>Para alterar diretamente, informe a senha atual do participante e a nova senha. Se não souber a atual, use o e-mail de recuperação.</p>
+              <label>Senha atual
+                <input type="password" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)}
+                  required autoComplete="off" placeholder="Senha atual do participante"/>
+              </label>
+              <label>Nova senha
+                <input type="password" value={replacementPassword} onChange={e=>setReplacementPassword(e.target.value)}
+                  required minLength={8} maxLength={72} autoComplete="new-password" placeholder="Nova senha com no mínimo 8 caracteres"/>
+              </label>
+              <button className="ta-primary" type="submit"
+                disabled={passwordChangeBusy||replacementPassword.length<8||!currentPassword}>
+                {passwordChangeBusy?'Alterando...':'Salvar nova senha'}
+              </button>
+            </form>}
             <div className="ta-page-user-controls">
               <span>{account.pages.length} tela(s) permitida(s)</span>
               <button type="button" className="ta-edit-pages" disabled={!!workingUid}
