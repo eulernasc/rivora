@@ -68,3 +68,24 @@
   display:grid;gap:13px;background:rgba(235,108,61,.045)}
 .ta-pages-editor>.ta-primary{justify-self:start}
 @media(max-width:530px){.ta-page-grid{grid-template-columns:1fr}}
+
+
+/* Senha inicial definida pelo ADM e redefinição segura via Firebase Auth. */
+.ta-password-section{padding:13px;border:1px solid var(--border,#34414e);border-radius:12px;display:grid;gap:10px}
+.ta-password-input-row{display:flex;align-items:stretch;gap:7px;min-width:0}
+.ta-panel .ta-password-input-row input{min-width:0;flex:1;width:100%}
+.ta-panel .ta-password-input-row .ta-password-visibility{
+  flex-shrink:0;background:var(--input-bg,#111923);border:1px solid #3a4654;color:var(--text-primary,#d7e2ea);
+  padding:0 12px;border-radius:9px;font-size:11px;font-weight:750;cursor:pointer
+}
+.ta-panel .ta-password-generate{justify-self:start;padding:9px 11px;border:1px solid rgba(235,108,61,.42);
+  background:rgba(235,108,61,.10);color:#ffb08e;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer}
+.ta-password-section>small{font-size:11px;color:var(--text-secondary,#97a7b8);line-height:1.5}
+.ta-password-reset-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.ta-password-reset-row>span{font-size:11px;color:var(--text-secondary,#94a6b8)}
+.ta-user .ta-password-reset{background:rgba(67,142,199,.09);color:#9ed7ff;
+  border:1px solid rgba(89,158,209,.33);border-radius:8px;
+  padding:8px 10px;font-size:11px;font-weight:750;cursor:pointer}
+.ta-user .ta-password-reset:hover{background:rgba(67,142,199,.18)}
+.ta-user .ta-password-reset:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:520px){.ta-password-input-row{flex-wrap:wrap}.ta-password-input-row input{flex-basis:100%}}
