@@ -1,9 +1,9 @@
 import {useEffect,useMemo,useState,type FormEvent} from 'react'
 import {initializeApp,deleteApp} from 'firebase/app'
-import {createUserWithEmailAndPassword,deleteUser,getAuth,signOut} from 'firebase/auth'
+import {createUserWithEmailAndPassword,deleteUser,getAuth,signOut,sendPasswordResetEmail} from 'firebase/auth'
 import {collection,doc,onSnapshot,serverTimestamp,setDoc,updateDoc} from 'firebase/firestore'
 import {CheckCircle2,Copy,ShieldCheck,UserPlus,Users,XCircle} from 'lucide-react'
-import {db,firebaseConfig} from './firebase'
+import {auth,db,firebaseConfig} from './firebase'
 import './TrainingAccounts.css'
 import {RIVORA_PAGE_NAMES,selectedPages,type RivoraPage} from './pageAccess'
 
@@ -30,11 +30,14 @@ export default function TrainingAccounts(){
   const [name,setName]=useState('')
   const [email,setEmail]=useState('')
   const [role,setRole]=useState<AccountRole>('viewer')
+  const [initialPassword,setInitialPassword]=useState('')
+  const [showPassword,setShowPassword]=useState(false)
   const [pages,setPages]=useState<RivoraPage[]>(['Visão geral'])
   const [editingUid,setEditingUid]=useState('')
   const [editingPages,setEditingPages]=useState<RivoraPage[]>([])
   const [busy,setBusy]=useState(false)
   const [workingUid,setWorkingUid]=useState('')
+  const [resetUid,setResetUid]=useState('')
   const [notice,setNotice]=useState('')
   const [credentials,setCredentials]=useState<{email:string;password:string}|null>(null)
   useEffect(()=>{
@@ -79,13 +82,16 @@ export default function TrainingAccounts(){
     e.preventDefault()
     if(!ready||busy)return
     if(!pages.length){setNotice('Marque pelo menos uma tela para liberar o novo usuário.');return}
+    if(initialPassword.length<8||initialPassword.length>72){
+      setNotice('Defina uma senha com 8 a 72 caracteres ou use Gerar senha.');return
+    }
     const cleanName=name.trim(),cleanEmail=email.trim().toLowerCase()
     if(cleanName.length<2||cleanName.length>100||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail))return
     if(accounts.some(a=>a.email.toLowerCase()===cleanEmail)){
       setNotice('Esse e-mail já foi cadastrado para treinamento.');return
     }
     setBusy(true);setNotice('');setCredentials(null)
-    const password=newPassword()
+    const password=initialPassword
     const app=initializeApp(firebaseConfig,'rivora-new-user-'+crypto.randomUUID())
     const secondaryAuth=getAuth(app)
     try{
@@ -101,7 +107,7 @@ export default function TrainingAccounts(){
         try{await deleteUser(created.user)}catch{/* o perfil não existe: regras ainda negam acesso */}
         throw writeError
       }
-      setName('');setEmail('');setRole('viewer');setPages(['Visão geral'])
+      setName('');setEmail('');setRole('viewer');setPages(['Visão geral']);setInitialPassword('');setShowPassword(false)
       setCredentials({email:cleanEmail,password})
       setNotice('Conta criada e liberada. Copie as credenciais agora, pois a senha não fica salva no RIVORA.')
     }catch(err){setNotice(errorMessage(err))}
@@ -124,6 +130,20 @@ export default function TrainingAccounts(){
     }catch(err){setNotice(errorMessage(err));return false}
     finally{setWorkingUid('')}
   }
+  async function requestPasswordReset(account:TrainingAccount){
+    if(!ready||busy||workingUid||resetUid)return
+    if(!window.confirm('Enviar um link para redefinir a senha de '+account.email+'? O usuário escolherá a nova senha no próprio e-mail.'))return
+    setResetUid(account.id);setNotice('');setCredentials(null)
+    try{
+      await sendPasswordResetEmail(auth,account.email)
+      setNotice('Solicitação enviada para '+account.email+'. O usuário poderá definir uma nova senha pelo link do Firebase.')
+    }catch(err){
+      const code=typeof err==='object'&&err!==null&&'code' in err?String(err.code):''
+      setNotice(code==='auth/too-many-requests'
+        ?'Foram feitas muitas solicitações. Tente novamente mais tarde.'
+        :'Não foi possível enviar a redefinição. Confira o provedor de e-mail/senha e os modelos de e-mail do Firebase.')
+    }finally{setResetUid('')}
+  }
   function beginEditing(account:TrainingAccount){
     if(editingUid===account.id){setEditingUid('');return}
     setEditingUid(account.id)
@@ -144,6 +164,26 @@ export default function TrainingAccounts(){
         <form onSubmit={e=>void addUser(e)}>
           <label>Nome completo<input required minLength={2} maxLength={100} value={name} onChange={e=>setName(e.target.value)} placeholder="Nome do participante"/></label>
           <label>E-mail de login<input type="email" required maxLength={254} value={email} onChange={e=>setEmail(e.target.value)} placeholder="nome@empresa.com.br" autoComplete="off"/></label>
+          <div className="ta-password-section">
+            <label htmlFor="ta-initial-password">Senha inicial do usuário
+              <div className="ta-password-input-row">
+                <input id="ta-initial-password" type={showPassword?'text':'password'}
+                  minLength={8} maxLength={72} required
+                  value={initialPassword} onChange={e=>setInitialPassword(e.target.value)}
+                  autoComplete="new-password" placeholder="Defina uma senha de acesso"/>
+                <button type="button" className="ta-password-visibility"
+                  aria-label={showPassword?'Ocultar senha':'Mostrar senha'}
+                  onClick={()=>setShowPassword(visible=>!visible)}>
+                  {showPassword?'Ocultar':'Mostrar'}
+                </button>
+              </div>
+            </label>
+            <button type="button" className="ta-password-generate"
+              onClick={()=>{setInitialPassword(newPassword());setShowPassword(true)}}>
+              Gerar senha forte
+            </button>
+            <small>A senha é definida apenas na criação da conta e não fica salva no painel.</small>
+          </div>
           <label>Nível de acesso
             <select value={role} onChange={e=>setRole(e.target.value as AccountRole)}>
               <option value="viewer">Consulta (não altera dados)</option>
@@ -156,7 +196,7 @@ export default function TrainingAccounts(){
             <p>O menu, as buscas e o acesso aos dados seguem as telas selecionadas.</p>
             {pageChoices(pages,setPages,'ta-new-')}
           </div>
-          <button className="ta-primary" type="submit" disabled={busy||!ready||!pages.length}>{busy?'Criando...':'Criar login e senha'}</button>
+          <button className="ta-primary" type="submit" disabled={busy||!ready||!pages.length||initialPassword.length<8||initialPassword.length>72}>{busy?'Criando...':'Criar login e senha'}</button>
         </form>
         {loadError&&<p className="ta-error"><XCircle size={15}/>{loadError}</p>}
         {notice&&<p className="ta-message" role="status">{notice}</p>}
@@ -184,6 +224,13 @@ export default function TrainingAccounts(){
                 className={account.active?'ta-block':'ta-unblock'}
                 onClick={()=>void updateAccount(account,{active:!account.active})}>
                 {account.active?'Bloquear':'Liberar'}
+              </button>
+            </div>
+            <div className="ta-password-reset-row">
+              <span>Senha de acesso</span>
+              <button type="button" className="ta-password-reset" disabled={!!resetUid||!!workingUid||busy}
+                onClick={()=>void requestPasswordReset(account)}>
+                {resetUid===account.id?'Enviando...':'Enviar link para alterar senha'}
               </button>
             </div>
             <div className="ta-page-user-controls">
